@@ -1,0 +1,209 @@
+---
+title: "Lesson 1: Introduction to RStudio Interface and R Markdown"
+author: "For SAS Users Learning R"
+date: "`r Sys.Date()`"
+output: 
+  html_document:
+    toc: true
+    toc_float: true
+    theme: united
+    highlight: tango
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Introduction
+
+Welcome to the first lesson in our curriculum for SAS users learning R! This lesson will guide you through understanding the RStudio interface, installing essential packages, and creating your first R Markdown document.
+
+> **Note:** Before starting this lesson, please make sure you have installed R and RStudio by following the instructions in the README.md file at the root of this repository.
+
+## Learning Objectives
+
+By the end of this lesson, you will be able to:
+
+1. Navigate the RStudio interface and understand its key components
+2. Install and load R packages
+3. Create and save an R Markdown document
+4. Understand key differences between SAS and R environments
+
+# Part 1: Understanding the RStudio Interface
+
+When you open RStudio, you'll see a window divided into multiple panes. Let's explore each one:
+
+## The Four Main Panes
+
+1. **Source Editor** (top-left): This is where you write and edit your R code files. Similar to the Enhanced Editor in SAS, but more feature-rich.
+
+2. **Console** (bottom-left): This is where R commands are executed and where you see the results. You can type commands directly here or run them from the Source Editor. This combines aspects of both the SAS Log and Output windows.
+
+3. **Environment/History** (top-right): 
+   - The Environment tab shows all objects (datasets, variables) currently in memory
+   - The History tab shows previously executed commands
+   - This has no direct equivalent in SAS, though it's somewhat similar to the Explorer window in SAS
+
+4. **Files/Plots/Packages/Help** (bottom-right):
+   - Files: Browse files on your computer
+   - Plots: View generated plots
+   - Packages: Manage installed packages
+   - Help: Access R documentation
+   - Viewer: View HTML output
+
+```{r, echo=FALSE, fig.cap="RStudio Interface", out.width="100%"}
+# This chunk would typically include an image of the RStudio interface
+# Since we can't include an image directly in this example, we'll leave a placeholder
+```
+
+> **SAS vs. R:** In SAS, you typically have separate windows for code, log, and output. In RStudio, these functions are integrated into a single interface with multiple panes. Also, SAS automatically logs all operations, while in R, messages and errors appear in the Console as you run code.
+
+# Part 2: Installing and Using R Packages
+
+## What are R Packages?
+
+In R, packages are collections of functions, data, and documentation that extend the capabilities of base R. This is a key difference from SAS, where most functionality is built into the base software or available through licensed modules.
+
+## Installing Packages
+
+If you haven't already installed the essential packages mentioned in the README.md file, let's do that now:
+
+```{r install-packages, eval=FALSE}
+# Install the tidyverse and haven packages
+install.packages("tidyverse")
+install.packages("haven")
+```
+
+> **Note:** You only need to install packages once on your computer. However, you'll need to load them each time you start a new R session.
+
+## Loading Packages
+
+To use a package in your current R session, you need to load it using the `library()` function:
+
+```{r load-packages, message=FALSE}
+# Load the tidyverse and haven packages
+library(tidyverse)
+library(haven)
+```
+
+> **SAS vs. R:** In SAS, you might use `PROC IMPORT` or `LIBNAME` statements to access external data. In R, you use specialized packages like `haven` to import SAS datasets or `readxl` for Excel files.
+
+# Part 3: Creating an R Markdown Document
+
+## What is R Markdown?
+
+R Markdown is a file format that allows you to combine R code, results, and narrative text in a single document. This is a powerful tool for reproducible research and reporting.
+
+## Creating a New R Markdown Document
+
+1. In RStudio, click on File → New File → R Markdown
+2. Enter a title and author name
+3. Select HTML as the default output format
+4. Click OK
+
+You'll see a template R Markdown document with some example code. Let's modify it:
+
+```{r, eval=FALSE}
+# This is just an example of what you would see in the template
+```
+
+## Basic R Markdown Structure
+
+An R Markdown document has three main components:
+
+1. **YAML Header**: The section at the top between `---` marks that contains metadata
+2. **Text**: Regular markdown text for your narrative
+3. **Code Chunks**: Sections of R code enclosed in ``` marks
+
+## Running Code in R Markdown
+
+You can run code chunks by:
+- Clicking the green "play" button in the top-right corner of the chunk
+- Placing your cursor inside the chunk and pressing Ctrl+Shift+Enter (Cmd+Shift+Enter on Mac)
+- Running a single line by placing your cursor on that line and pressing Ctrl+Enter (Cmd+Enter on Mac)
+
+Let's try a simple example:
+
+```{r r-version}
+# Display the R version
+R.version.string
+```
+
+## Saving Your R Markdown Document
+
+To save your R Markdown document:
+1. Click File → Save
+2. Choose a location and name your file "Lesson1_setup.Rmd"
+3. Click Save
+
+# Part 4: Creating an RStudio Project
+
+## What is an RStudio Project?
+
+An RStudio Project helps you organize your work by keeping all files related to a particular analysis in one directory. It's similar to creating a new SAS project, but with more integrated features.
+
+## Creating a New Project
+
+1. Click File → New Project
+2. Select "New Directory"
+3. Choose "New Project"
+4. Enter a name for your project (e.g., "R_for_SAS_Users")
+5. Choose a location for your project
+6. Click "Create Project"
+
+RStudio will create a new directory with an .Rproj file and open a new RStudio session for this project.
+
+> **SAS vs. R:** In SAS, you might organize your work using libraries and folders. RStudio Projects provide a more integrated approach, automatically setting the working directory and providing project-specific options.
+
+# Key Differences Between SAS and R
+
+Let's summarize some key differences between SAS and R environments:
+
+| Feature | SAS | R with RStudio |
+|---------|-----|----------------|
+| Software Type | Proprietary, commercial | Open-source, free |
+| Interface | Separate windows for code, log, output | Integrated IDE with multiple panes |
+| Functionality | Most features built-in | Core functionality extended through packages |
+| Data Storage | Data stored in datasets within libraries | Data stored as objects in memory |
+| Logging | Automatic log of all operations | Messages appear in Console as code runs |
+| Workflow | Often batch processing with separate output | Interactive, with immediate results |
+| Documentation | Help through F1 or PROC DOCUMENT | Help panel, ?function, or vignettes |
+
+# Exercises
+
+Complete the following exercises to practice what you've learned:
+
+1. **Installation Check**:
+   - Open RStudio and verify that it's properly connected to R
+   - In the Console, type `R.version.string` and press Enter to see your R version
+
+2. **Package Installation**:
+   - Install the packages `tidyverse` and `haven` if you haven't already
+   - Load both packages using the `library()` function
+   - Type `tidyverse_packages()` in the Console to see all packages included in the tidyverse
+
+3. **R Markdown Practice**:
+   - Create a new R Markdown document
+   - Add a title and your name
+   - Add a code chunk that displays the result of `2 + 2`
+   - Add another code chunk that shows all installed packages using `installed.packages()[,1]`
+   - Save the document as "MyFirstRMarkdown.Rmd"
+   - Click the "Knit" button to create an HTML output
+
+4. **Project Setup**:
+   - Create a new RStudio Project called "SAS_to_R_Learning"
+   - Inside this project, save your R Markdown documents from this lesson
+   - Create a new folder called "data" where you'll store datasets for future lessons
+
+# Conclusion
+
+Congratulations! You've completed Lesson 1 of our curriculum for SAS users learning R. You've learned about the RStudio interface, installed essential packages, and created your first R Markdown document.
+
+In the next lesson, we'll dive into R basics, including data structures and syntax fundamentals, with a focus on how they compare to SAS concepts you're already familiar with.
+
+# Additional Resources
+
+- [R for SAS and SPSS Users](https://r4stats.com/books/r4sas-spss/) by Robert A. Muenchen
+- [RStudio Cheatsheets](https://posit.co/resources/cheatsheets/)
+- [R Markdown: The Definitive Guide](https://bookdown.org/yihui/rmarkdown/)
+- [R for Data Science](https://r4ds.had.co.nz/) by Hadley Wickham & Garrett Grolemund 

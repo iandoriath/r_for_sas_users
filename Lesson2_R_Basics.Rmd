@@ -1,0 +1,375 @@
+---
+title: "Lesson 2: R Basics – Objects, Data Structures, and Syntax Fundamentals"
+author: "Your Name"
+date: "`r Sys.Date()`"
+output: 
+  html_document:
+    toc: true
+    toc_float: true
+    theme: united
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Introduction
+
+Welcome to Lesson 2 of our curriculum for SAS users learning R! In this lesson, we'll explore the fundamental building blocks of R: its data structures, objects, and basic syntax. As a SAS user, you'll notice some key differences in how R handles data and operations compared to SAS. This lesson will help you transition your mindset from SAS's DATA steps and procedures to R's object-oriented approach.
+
+## Learning Objectives
+
+By the end of this lesson, you will be able to:
+
+1. Understand R's basic data types and structures
+2. Create and manipulate R objects using proper syntax
+3. Recognize key differences between SAS and R programming paradigms
+4. Work with vectors, matrices, lists, and data frames
+5. Handle categorical data using factors
+
+# R as an Object-Oriented Language
+
+One of the first major differences you'll notice between SAS and R is that **in R, everything is an object**. While SAS typically works with datasets and macro variables, R allows you to create and manipulate a wide variety of objects.
+
+## Creating Objects with the Assignment Operator
+
+In R, we use the assignment operator `<-` to create objects (though `=` also works in most contexts).
+
+```{r}
+# Creating simple objects
+patient_age <- 45
+patient_name <- "John Smith"
+is_enrolled <- TRUE
+
+# Display the objects
+patient_age
+patient_name
+is_enrolled
+```
+
+Notice how we can simply type the object name to display its contents. This is different from SAS, where you might need to use a PROC PRINT or PUT statement to see values.
+
+## Object Types
+
+Let's check the types of these objects using the `class()` function:
+
+```{r}
+class(patient_age)
+class(patient_name)
+class(is_enrolled)
+```
+
+These are the basic atomic types in R:
+- `numeric` (includes both integers and floating-point numbers)
+- `character` (text strings)
+- `logical` (TRUE/FALSE values)
+
+In SAS, you would define variable types when creating a dataset. In R, the type is determined when you create the object and can be changed later.
+
+# Vectors: The Foundation of R
+
+Vectors are the most fundamental data structure in R. Unlike SAS, where you typically work with observations (rows) in a dataset, R often operates on entire vectors at once.
+
+## Creating Vectors
+
+We use the `c()` function (for "combine" or "concatenate") to create vectors:
+
+```{r}
+# Create a vector of patient ages
+ages <- c(45, 52, 34, 60, 41)
+ages
+
+# Create a vector of patient names
+names <- c("John", "Maria", "Ahmed", "Lisa", "Robert")
+names
+
+# Create a logical vector
+enrolled <- c(TRUE, FALSE, TRUE, TRUE, FALSE)
+enrolled
+```
+
+## Vector Operations
+
+R performs operations on entire vectors at once, which is very different from SAS's row-by-row processing in DATA steps:
+
+```{r}
+# Add 5 years to all ages
+ages + 5
+
+# Check which patients are over 50
+ages > 50
+
+# Find the mean age
+mean(ages)
+
+# Find patients older than the mean age
+ages > mean(ages)
+```
+
+This "vectorized" approach is a key difference from SAS. Instead of writing a DATA step that loops through observations, R applies operations to entire vectors simultaneously.
+
+## Vector Indexing
+
+We can access elements of a vector using square brackets `[]`:
+
+```{r}
+# Get the first patient's age
+ages[1]  # Note: R indexing starts at 1, just like SAS
+
+# Get the first three patients' ages
+ages[1:3]
+
+# Get ages of patients who are enrolled
+ages[enrolled]
+
+# Get ages of patients over 50
+ages[ages > 50]
+```
+
+This powerful subsetting capability is similar to WHERE statements in SAS but more flexible and integrated directly into the language.
+
+# Matrices
+
+Matrices are two-dimensional structures that contain elements of the same type. They're similar to SAS datasets but can only contain one data type.
+
+```{r}
+# Create a matrix of lab values
+lab_matrix <- matrix(
+  c(120, 80, 7.2, 
+    135, 90, 6.8, 
+    118, 75, 7.5, 
+    142, 95, 6.5, 
+    125, 82, 7.0), 
+  nrow = 5, 
+  ncol = 3, 
+  byrow = TRUE
+)
+
+# Add column names
+colnames(lab_matrix) <- c("SBP", "DBP", "pH")
+
+lab_matrix
+```
+
+Matrices are useful for certain mathematical operations and statistical functions, but for most data analysis tasks similar to what you'd do in SAS, you'll use data frames (covered below).
+
+# Lists
+
+Lists are a flexible data structure with no direct equivalent in SAS. They can contain elements of different types, including other lists.
+
+```{r}
+# Create a list for a patient
+patient1 <- list(
+  id = "PT001",
+  name = "John Smith",
+  age = 45,
+  labs = c(120, 80, 7.2),
+  visits = as.Date(c("2023-01-15", "2023-03-20"))
+)
+
+# Access list elements
+patient1$name
+patient1$labs[2]  # Second lab value
+```
+
+Lists are somewhat like a collection of macro variables in SAS, but much more powerful. They're often used to store results from statistical functions or to organize heterogeneous data.
+
+# Data Frames: R's Version of SAS Datasets
+
+Data frames are the R structure most similar to SAS datasets. They're essentially collections of equal-length vectors, each forming a column.
+
+## Creating Data Frames
+
+```{r}
+# Create vectors for our data
+patient_ids <- c("PT001", "PT002", "PT003", "PT004", "PT005")
+patient_ages <- c(45, 52, 34, 60, 41)
+patient_sexes <- c("M", "F", "F", "M", "M")
+systolic_bp <- c(120, 135, 118, 142, 125)
+diastolic_bp <- c(80, 90, 75, 95, 82)
+
+# Combine into a data frame
+patients <- data.frame(
+  ID = patient_ids,
+  Age = patient_ages,
+  Sex = patient_sexes,
+  SBP = systolic_bp,
+  DBP = diastolic_bp
+)
+
+# View the data frame
+patients
+```
+
+## Working with Data Frames
+
+```{r}
+# Get dimensions (like PROC CONTENTS in SAS)
+dim(patients)
+
+# Get column names
+names(patients)
+
+# Get structure (similar to PROC CONTENTS)
+str(patients)
+
+# Summary statistics (similar to PROC MEANS)
+summary(patients)
+
+# Access a column (variable)
+patients$Age
+
+# Access a specific cell
+patients$SBP[3]  # SBP for the third patient
+
+# Access a row (observation)
+patients[2, ]  # Second patient
+
+# Access a subset of columns
+patients[, c("ID", "Age", "Sex")]
+```
+
+Data frames are the workhorse of R data analysis, similar to how datasets are central to SAS. However, R allows more flexible manipulation of data frames directly in code, without needing separate procedures.
+
+# Factors for Categorical Data
+
+Factors are R's way of handling categorical variables. They're somewhat similar to how SAS uses formats to display coded values.
+
+```{r}
+# Convert Sex to a factor
+patients$Sex <- factor(patients$Sex, levels = c("M", "F"))
+
+# Create a new categorical variable
+patients$AgeGroup <- cut(patients$Age, 
+                         breaks = c(0, 40, 60, 100),
+                         labels = c("Young", "Middle", "Senior"))
+
+# View the updated data frame
+patients
+
+# Check the structure
+str(patients)
+```
+
+Factors store categorical data efficiently and maintain the order of categories (important for plotting and modeling). This is similar to how you might use formats in SAS to display values, but factors are more integrated into R's data structures.
+
+# Basic Syntax and Functions
+
+## Function Calls
+
+In SAS, you use procedures (PROCs) to perform operations. In R, you use functions:
+
+```{r}
+# Calculate mean age (similar to PROC MEANS)
+mean(patients$Age)
+
+# Get a frequency table (similar to PROC FREQ)
+table(patients$Sex)
+
+# Cross-tabulation
+table(patients$Sex, patients$AgeGroup)
+```
+
+Functions in R return results that you can assign to objects, unlike SAS procedures which typically print output:
+
+```{r}
+# Store results in objects
+mean_age <- mean(patients$Age)
+sex_table <- table(patients$Sex)
+
+# Use the stored results
+mean_age
+sex_table
+```
+
+## Vectorized Operations
+
+R's vectorized operations have no direct analogy in SAS:
+
+```{r}
+# Calculate BMI for all patients at once
+weight <- c(70, 65, 58, 90, 80)  # kg
+height <- c(1.75, 1.60, 1.65, 1.85, 1.78)  # m
+bmi <- weight / height^2
+
+# Add to our data frame
+patients$Weight <- weight
+patients$Height <- height
+patients$BMI <- bmi
+
+patients
+```
+
+In SAS, you would write a DATA step with assignment statements for each observation. In R, the operation is applied to all elements at once.
+
+# SAS vs R: Key Differences
+
+Let's summarize some key differences between SAS and R:
+
+1. **Program Structure**: 
+   - SAS: Sequence of DATA steps and PROCs operating on datasets
+   - R: Interactive manipulation of objects
+
+2. **Data Handling**:
+   - SAS: One active dataset at a time in a step
+   - R: Multiple objects in memory simultaneously
+
+3. **Syntax**:
+   - SAS: Statements end with semicolons; case-insensitive
+   - R: Statements separated by line breaks or semicolons; case-sensitive
+
+4. **Execution**:
+   - SAS: Submit code blocks, review log
+   - R: Interactive execution, immediate results
+
+5. **Variable Creation**:
+   - SAS: Within DATA steps, applied to each observation
+   - R: Vectorized operations on entire columns at once
+
+# Exercises
+
+## Exercise 1: Creating Objects
+
+Create a numeric vector of patient ages (e.g., `ages <- c(45, 52, 34, 60)`). Create a character vector of patient sex values (`sex <- c("M", "F", "F", "M")`). Combine them into a data frame `patients <- data.frame(age=ages, sex=sex)`. Print the data frame to confirm its contents.
+
+```{r}
+# Your code here
+```
+
+## Exercise 2: Working with Vectors
+
+Calculate the mean of the ages vector using the `mean()` function. Try adding 5 to the ages vector (`ages + 5`) to see R's element-wise operation. Subset the ages vector to get the first two ages.
+
+```{r}
+# Your code here
+```
+
+## Exercise 3: Factor Practice
+
+Convert the sex vector into a factor (`sex_factor <- factor(sex, levels=c("M","F"))`). Check its structure with `str(sex_factor)`.
+
+```{r}
+# Your code here
+```
+
+In the space below, explain what the difference is between this factor and the original character vector, and how it might compare to how SAS handles categorical variables (formats or class variables in procedures).
+
+*Your explanation here*
+
+# Conclusion
+
+In this lesson, you've learned the fundamental building blocks of R programming and how they differ from SAS. You've seen how R's object-oriented approach and vectorized operations offer a different paradigm than SAS's step-based processing.
+
+Key takeaways:
+- R stores data in various object types (vectors, matrices, lists, data frames)
+- Vectorized operations apply functions to entire vectors at once
+- Data frames are similar to SAS datasets but more flexible
+- Factors handle categorical data similar to SAS formats
+
+In the next lesson, we'll explore how to import and export data between R and various file formats, including SAS datasets.
+
+# Session Information
+
+```{r}
+sessionInfo()
+``` 

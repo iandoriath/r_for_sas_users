@@ -1,0 +1,523 @@
+---
+title: "Lesson 5: Exploratory Data Analysis (EDA) – Summarization and Visualization"
+author: "Your Name"
+date: "`r Sys.Date()`"
+output: 
+  html_document:
+    toc: true
+    toc_float: true
+    theme: united
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+# Install required packages if not already installed
+if (!requireNamespace("tidyverse", quietly = TRUE)) install.packages("tidyverse")
+
+# Load the packages
+library(tidyverse)  # Loads ggplot2, dplyr, and other tidyverse packages
+```
+
+# Introduction
+
+Welcome to Lesson 5 of our curriculum for SAS users learning R! In this lesson, we'll explore techniques for Exploratory Data Analysis (EDA) in R. As a SAS user, you're familiar with procedures like PROC MEANS, PROC FREQ, and PROC SGPLOT for summarizing and visualizing data. R offers similar capabilities with more flexibility and interactivity.
+
+## Learning Objectives
+
+By the end of this lesson, you will be able to:
+
+1. Generate summary statistics for continuous and categorical variables
+2. Detect and handle missing values in your data
+3. Create basic visualizations using ggplot2
+4. Customize plots for publication quality
+5. Interpret exploratory analyses in a biomedical context
+6. Understand the differences between SAS and R approaches to EDA
+
+# Creating Sample Data
+
+Let's create a sample clinical trial dataset to work with throughout this lesson:
+
+```{r}
+# Set seed for reproducibility
+set.seed(123)
+
+# Create a clinical trial dataset
+clinical_trial <- data.frame(
+  PatientID = 1:100,
+  Age = round(rnorm(100, mean = 55, sd = 10)),
+  Sex = factor(sample(c("Male", "Female"), 100, replace = TRUE)),
+  Treatment = factor(sample(c("Placebo", "Drug A", "Drug B"), 100, replace = TRUE)),
+  Cholesterol = round(rnorm(100, mean = 200, sd = 25)),
+  BMI = round(rnorm(100, mean = 26, sd = 4), 1),
+  Outcome = factor(sample(c("Improved", "No Change", "Worsened"), 100, replace = TRUE, 
+                          prob = c(0.5, 0.3, 0.2)))
+)
+
+# Introduce some missing values
+clinical_trial$Cholesterol[sample(1:100, 5)] <- NA
+clinical_trial$BMI[sample(1:100, 8)] <- NA
+
+# View the first few rows
+head(clinical_trial)
+```
+
+# Summarizing Data
+
+## Basic Summary Statistics
+
+In SAS, you might use PROC MEANS or PROC UNIVARIATE to get summary statistics. In R, there are several ways to do this:
+
+```{r}
+# Basic summary of the entire dataset
+summary(clinical_trial)
+
+# Summary of a specific variable
+summary(clinical_trial$Cholesterol)
+
+# More detailed statistics for a numeric variable
+cholesterol_stats <- clinical_trial %>%
+  summarize(
+    n = n(),
+    n_missing = sum(is.na(Cholesterol)),
+    mean = mean(Cholesterol, na.rm = TRUE),
+    median = median(Cholesterol, na.rm = TRUE),
+    sd = sd(Cholesterol, na.rm = TRUE),
+    min = min(Cholesterol, na.rm = TRUE),
+    q1 = quantile(Cholesterol, 0.25, na.rm = TRUE),
+    q3 = quantile(Cholesterol, 0.75, na.rm = TRUE),
+    max = max(Cholesterol, na.rm = TRUE)
+  )
+
+cholesterol_stats
+```
+
+## Summarizing by Group
+
+Similar to PROC MEANS with a CLASS statement in SAS, we can use `group_by()` and `summarize()` to get statistics by group:
+
+```{r}
+# Summary statistics by treatment group
+clinical_trial %>%
+  group_by(Treatment) %>%
+  summarize(
+    n = n(),
+    mean_chol = mean(Cholesterol, na.rm = TRUE),
+    sd_chol = sd(Cholesterol, na.rm = TRUE),
+    mean_bmi = mean(BMI, na.rm = TRUE),
+    sd_bmi = sd(BMI, na.rm = TRUE)
+  )
+
+# Summary statistics by treatment and sex
+clinical_trial %>%
+  group_by(Treatment, Sex) %>%
+  summarize(
+    n = n(),
+    mean_chol = mean(Cholesterol, na.rm = TRUE),
+    sd_chol = sd(Cholesterol, na.rm = TRUE)
+  )
+```
+
+## Frequency Tables
+
+In SAS, you might use PROC FREQ to create frequency tables. In R, we can use `table()` or dplyr's `count()`:
+
+```{r}
+# Simple frequency table
+table(clinical_trial$Treatment)
+
+# Proportions
+prop.table(table(clinical_trial$Treatment))
+
+# Cross-tabulation
+treatment_outcome_table <- table(clinical_trial$Treatment, clinical_trial$Outcome)
+treatment_outcome_table
+
+# Proportions within each treatment
+prop.table(treatment_outcome_table, 1)  # Row proportions
+
+# Using dplyr's count
+clinical_trial %>%
+  count(Treatment, Outcome) %>%
+  pivot_wider(names_from = Outcome, values_from = n, values_fill = 0)
+```
+
+# Handling Missing Values in EDA
+
+In SAS, missing values are represented by a period (.) for numeric variables and blank for character variables. In R, missing values are represented by `NA` for all types of variables.
+
+## Detecting Missing Values
+
+```{r}
+# Check for missing values in the entire dataset
+colSums(is.na(clinical_trial))
+
+# Visualize missing values pattern
+clinical_trial %>%
+  summarize(across(everything(), ~ sum(is.na(.)))) %>%
+  pivot_longer(everything(), names_to = "Variable", values_to = "Missing_Count") %>%
+  ggplot(aes(x = reorder(Variable, Missing_Count), y = Missing_Count)) +
+  geom_bar(stat = "identity") +
+  coord_flip() +
+  labs(title = "Missing Values by Variable", x = "Variable", y = "Count of Missing Values")
+```
+
+## Impact of Missing Values on Analysis
+
+Let's see how missing values affect our summary statistics:
+
+```{r}
+# Mean with and without handling NAs
+mean(clinical_trial$Cholesterol)  # Returns NA if any value is NA
+mean(clinical_trial$Cholesterol, na.rm = TRUE)  # Removes NAs before calculation
+
+# Complete cases only
+complete_cases <- clinical_trial[complete.cases(clinical_trial), ]
+cat("Complete cases:", nrow(complete_cases), "out of", nrow(clinical_trial), "\n")
+```
+
+## Simple Imputation
+
+While advanced imputation methods are beyond the scope of this lesson, here's a simple example of imputing missing values with the mean:
+
+```{r}
+# Impute missing Cholesterol values with the mean
+clinical_trial_imputed <- clinical_trial %>%
+  mutate(Cholesterol_Imputed = ifelse(is.na(Cholesterol), 
+                                     mean(Cholesterol, na.rm = TRUE), 
+                                     Cholesterol))
+
+# Compare original and imputed
+summary(clinical_trial$Cholesterol)
+summary(clinical_trial_imputed$Cholesterol_Imputed)
+```
+
+# Introduction to ggplot2
+
+In SAS, you might use PROC SGPLOT or PROC GPLOT for visualization. In R, the ggplot2 package (part of the tidyverse) is the most popular plotting system. It's based on the "Grammar of Graphics," which provides a structured approach to creating visualizations.
+
+## Basic Structure of a ggplot
+
+A ggplot consists of three main components:
+1. Data: The dataset to visualize
+2. Aesthetics (aes): Mapping variables to visual properties
+3. Geometries (geom): The type of plot to create
+
+```{r}
+# Basic scatter plot
+ggplot(clinical_trial, aes(x = Age, y = Cholesterol)) +
+  geom_point()
+```
+
+This is similar to a PROC SGPLOT SCATTER statement in SAS, but the syntax is different.
+
+## Adding Layers
+
+One of the strengths of ggplot2 is the ability to add layers to a plot:
+
+```{r}
+# Scatter plot with a trend line
+ggplot(clinical_trial, aes(x = Age, y = Cholesterol)) +
+  geom_point() +
+  geom_smooth(method = "lm", se = TRUE) +
+  labs(title = "Cholesterol vs. Age",
+       x = "Age (years)",
+       y = "Cholesterol (mg/dL)")
+```
+
+## Mapping Aesthetics to Variables
+
+We can map other variables to visual properties like color, shape, or size:
+
+```{r}
+# Color points by Treatment
+ggplot(clinical_trial, aes(x = Age, y = Cholesterol, color = Treatment)) +
+  geom_point() +
+  labs(title = "Cholesterol vs. Age by Treatment Group",
+       x = "Age (years)",
+       y = "Cholesterol (mg/dL)")
+```
+
+# Common Plot Types
+
+## Histogram
+
+Similar to PROC UNIVARIATE or PROC SGPLOT HISTOGRAM in SAS:
+
+```{r}
+# Basic histogram
+ggplot(clinical_trial, aes(x = Cholesterol)) +
+  geom_histogram(bins = 20, fill = "skyblue", color = "black") +
+  labs(title = "Distribution of Cholesterol",
+       x = "Cholesterol (mg/dL)",
+       y = "Count")
+
+# Density plot
+ggplot(clinical_trial, aes(x = Cholesterol)) +
+  geom_density(fill = "skyblue", alpha = 0.5) +
+  labs(title = "Density of Cholesterol",
+       x = "Cholesterol (mg/dL)",
+       y = "Density")
+```
+
+## Boxplot
+
+Similar to PROC SGPLOT VBOX in SAS:
+
+```{r}
+# Boxplot by treatment
+ggplot(clinical_trial, aes(x = Treatment, y = Cholesterol, fill = Treatment)) +
+  geom_boxplot() +
+  labs(title = "Cholesterol by Treatment Group",
+       x = "Treatment",
+       y = "Cholesterol (mg/dL)")
+
+# Add individual points
+ggplot(clinical_trial, aes(x = Treatment, y = Cholesterol, fill = Treatment)) +
+  geom_boxplot(alpha = 0.7) +
+  geom_jitter(width = 0.2, alpha = 0.5) +
+  labs(title = "Cholesterol by Treatment Group",
+       x = "Treatment",
+       y = "Cholesterol (mg/dL)")
+```
+
+## Bar Chart
+
+Similar to PROC SGPLOT VBAR in SAS:
+
+```{r}
+# Bar chart of outcome counts
+ggplot(clinical_trial, aes(x = Outcome, fill = Outcome)) +
+  geom_bar() +
+  labs(title = "Distribution of Outcomes",
+       x = "Outcome",
+       y = "Count")
+
+# Stacked bar chart
+ggplot(clinical_trial, aes(x = Treatment, fill = Outcome)) +
+  geom_bar(position = "stack") +
+  labs(title = "Outcomes by Treatment Group",
+       x = "Treatment",
+       y = "Count")
+
+# Proportional stacked bar chart
+ggplot(clinical_trial, aes(x = Treatment, fill = Outcome)) +
+  geom_bar(position = "fill") +
+  labs(title = "Proportion of Outcomes by Treatment Group",
+       x = "Treatment",
+       y = "Proportion")
+```
+
+## Line Plot
+
+For longitudinal data, we often use line plots. Let's create a simulated longitudinal dataset:
+
+```{r}
+# Create a longitudinal dataset
+set.seed(456)
+longitudinal_data <- expand.grid(
+  PatientID = 1:20,
+  Visit = c("Baseline", "Month1", "Month3", "Month6")
+)
+
+longitudinal_data$Measurement <- 100 + 
+  rep(rnorm(20, mean = 0, sd = 10), each = 4) +  # Patient-specific baseline
+  ifelse(longitudinal_data$Visit == "Baseline", 0,
+         ifelse(longitudinal_data$Visit == "Month1", -5,
+                ifelse(longitudinal_data$Visit == "Month3", -10, -15))) +  # Time effect
+  rnorm(nrow(longitudinal_data), mean = 0, sd = 5)  # Random noise
+
+# Add a treatment group
+longitudinal_data$Treatment <- factor(rep(rep(c("Placebo", "Active"), each = 10), each = 4))
+
+# Convert Visit to a factor with the correct order
+longitudinal_data$Visit <- factor(longitudinal_data$Visit, 
+                                 levels = c("Baseline", "Month1", "Month3", "Month6"))
+
+# Calculate mean by visit and treatment
+longitudinal_summary <- longitudinal_data %>%
+  group_by(Visit, Treatment) %>%
+  summarize(
+    mean_measurement = mean(Measurement),
+    se_measurement = sd(Measurement) / sqrt(n())
+  )
+
+# Line plot
+ggplot(longitudinal_summary, aes(x = Visit, y = mean_measurement, 
+                                group = Treatment, color = Treatment)) +
+  geom_line() +
+  geom_point() +
+  geom_errorbar(aes(ymin = mean_measurement - se_measurement, 
+                    ymax = mean_measurement + se_measurement), 
+                width = 0.2) +
+  labs(title = "Mean Measurement Over Time by Treatment Group",
+       x = "Visit",
+       y = "Mean Measurement")
+```
+
+# Enhancing Plots
+
+## Themes
+
+ggplot2 provides several built-in themes to change the overall appearance of a plot:
+
+```{r}
+# Default theme
+p <- ggplot(clinical_trial, aes(x = Treatment, y = Cholesterol, fill = Treatment)) +
+  geom_boxplot() +
+  labs(title = "Cholesterol by Treatment Group",
+       x = "Treatment",
+       y = "Cholesterol (mg/dL)")
+
+# Apply different themes
+p + theme_minimal()
+p + theme_classic()
+p + theme_bw()
+```
+
+## Customizing Colors
+
+```{r}
+# Custom colors
+ggplot(clinical_trial, aes(x = Treatment, fill = Treatment)) +
+  geom_bar() +
+  scale_fill_manual(values = c("Placebo" = "gray", "Drug A" = "skyblue", "Drug B" = "darkblue")) +
+  labs(title = "Count by Treatment Group",
+       x = "Treatment",
+       y = "Count")
+```
+
+## Faceting
+
+Faceting allows you to create multiple plots based on a categorical variable:
+
+```{r}
+# Facet by Sex
+ggplot(clinical_trial, aes(x = Age, y = Cholesterol, color = Treatment)) +
+  geom_point() +
+  geom_smooth(method = "lm", se = FALSE) +
+  facet_wrap(~ Sex) +
+  labs(title = "Cholesterol vs. Age by Treatment and Sex",
+       x = "Age (years)",
+       y = "Cholesterol (mg/dL)")
+```
+
+# SAS vs R: Visualization Comparison
+
+Let's compare how you might create a similar plot in SAS versus R:
+
+**SAS (PROC SGPLOT)**:
+```
+proc sgplot data=clinical_trial;
+  vbox Cholesterol / category=Treatment group=Sex;
+  title "Cholesterol by Treatment and Sex";
+  xaxis label="Treatment Group";
+  yaxis label="Cholesterol (mg/dL)";
+run;
+```
+
+**R (ggplot2)**:
+```{r}
+ggplot(clinical_trial, aes(x = Treatment, y = Cholesterol, fill = Sex)) +
+  geom_boxplot() +
+  labs(title = "Cholesterol by Treatment and Sex",
+       x = "Treatment Group",
+       y = "Cholesterol (mg/dL)")
+```
+
+Key differences:
+1. **Syntax**: SAS uses a procedural approach with statements, while ggplot2 uses a layered approach with the `+` operator.
+2. **Flexibility**: ggplot2 offers more customization options and is more extensible.
+3. **Output**: SAS procedures typically produce static output, while ggplot2 objects can be modified, saved, and reused.
+4. **Integration**: In R Markdown, plots appear directly in the document, making it easier to combine analysis and visualization.
+
+# Interpreting Results in a Biomedical Context
+
+Let's interpret some of our exploratory analyses in the context of a clinical trial:
+
+```{r}
+# Summary statistics by treatment
+treatment_summary <- clinical_trial %>%
+  group_by(Treatment) %>%
+  summarize(
+    n = n(),
+    mean_chol = mean(Cholesterol, na.rm = TRUE),
+    sd_chol = sd(Cholesterol, na.rm = TRUE),
+    mean_age = mean(Age),
+    sd_age = sd(Age)
+  )
+
+treatment_summary
+
+# Outcome by treatment
+outcome_by_treatment <- clinical_trial %>%
+  count(Treatment, Outcome) %>%
+  group_by(Treatment) %>%
+  mutate(Proportion = n / sum(n))
+
+outcome_by_treatment
+```
+
+**Interpretation**:
+- The mean cholesterol levels appear to be lower in the Drug B group compared to Placebo and Drug A.
+- The age distributions are similar across treatment groups, suggesting good randomization.
+- The proportion of patients with "Improved" outcomes is higher in the Drug B group compared to Placebo.
+
+These observations would guide further formal statistical testing, which we'll cover in Lesson 7.
+
+# Exercises
+
+## Exercise 1: Summary Statistics
+
+Using the `clinical_trial` dataset, calculate:
+1. The overall mean and median of Cholesterol
+2. The mean Cholesterol by Treatment group
+3. A frequency table of Outcome by Treatment
+
+Interpret these results in a short text: do the groups differ noticeably in Cholesterol or outcome counts?
+
+```{r}
+# Your code here
+```
+
+*Your interpretation here*
+
+## Exercise 2: Creating Visualizations
+
+1. Create a histogram of a numeric variable (e.g., BMI) using ggplot2. Customize the bins if necessary and add a title.
+2. Create a boxplot of that variable by a categorical grouping (e.g., BMI by Treatment).
+3. Ensure your plots have proper axis labels and interpret what the plots show.
+
+```{r}
+# Your code here
+```
+
+*Your interpretation here*
+
+## Exercise 3: Longitudinal Data Visualization
+
+Using the `longitudinal_data` dataset, create a line plot showing the mean Measurement over time for each Treatment group. Add error bars representing the standard error of the mean.
+
+```{r}
+# Your code here
+```
+
+*Your interpretation here*
+
+# Conclusion
+
+In this lesson, you've learned how to perform exploratory data analysis in R, including summarizing data, handling missing values, and creating visualizations with ggplot2. You've seen how these techniques compare to similar approaches in SAS, and how to interpret the results in a biomedical context.
+
+Key takeaways:
+- R provides flexible tools for summarizing data, similar to SAS's PROC MEANS and PROC FREQ
+- Missing values (NA) require explicit handling in R, often using the na.rm=TRUE argument
+- ggplot2 offers a powerful grammar for creating customizable visualizations
+- The layered approach of ggplot2 differs from SAS's procedural approach but offers more flexibility
+- Exploratory analysis in R can be interactive and iterative, allowing for quick insights
+
+In the next lesson, we'll explore how to write custom functions and control structures in R, which will help you automate repetitive tasks and create reusable code.
+
+# Session Information
+
+```{r}
+sessionInfo()
+``` 

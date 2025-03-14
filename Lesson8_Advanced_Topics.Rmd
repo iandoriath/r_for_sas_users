@@ -1,0 +1,508 @@
+---
+title: "Lesson 8: Advanced Topics – Mixed Models, Bayesian Analysis, High-Performance Computing, and Shiny"
+author: "Your Name"
+date: "`r Sys.Date()`"
+output: 
+  html_document:
+    toc: true
+    toc_float: true
+    theme: united
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE)
+# Install required packages if not already installed
+if (!requireNamespace("tidyverse", quietly = TRUE)) install.packages("tidyverse")
+if (!requireNamespace("lme4", quietly = TRUE)) install.packages("lme4")
+if (!requireNamespace("data.table", quietly = TRUE)) install.packages("data.table")
+if (!requireNamespace("shiny", quietly = TRUE)) install.packages("shiny")
+if (!requireNamespace("parallel", quietly = TRUE)) install.packages("parallel")
+
+# Load the packages
+library(tidyverse)  # For data manipulation and visualization
+library(lme4)       # For mixed-effects models
+library(data.table) # For high-performance data manipulation
+```
+
+# Introduction
+
+Welcome to Lesson 8 of our curriculum for SAS users learning R! In this lesson, we'll explore advanced topics that showcase R's capabilities beyond what we've covered so far. As a SAS user, you're familiar with procedures like PROC MIXED for mixed models or PROC MCMC for Bayesian analysis. R offers similar capabilities through specialized packages, often with more flexibility and extensibility.
+
+This lesson is designed as a survey of advanced capabilities rather than an in-depth tutorial on each topic. The goal is to show you what's possible in R and provide starting points for further exploration.
+
+## Learning Objectives
+
+By the end of this lesson, you will be able to:
+
+1. Understand the basics of mixed-effects models in R
+2. Recognize the potential of Bayesian analysis in R
+3. Identify strategies for handling large datasets and improving performance
+4. Appreciate the capabilities of Shiny for creating interactive web applications
+5. Know where to find resources for further learning on these advanced topics
+
+# Mixed-Effects Models
+
+## What Are Mixed-Effects Models?
+
+Mixed-effects models (also called multilevel or hierarchical models) are used when data has a hierarchical or nested structure. Common scenarios include:
+
+- Repeated measurements on the same subjects over time
+- Patients nested within hospitals or clinics
+- Students nested within classrooms or schools
+
+In SAS, you would use PROC MIXED for linear mixed models or PROC GLIMMIX for generalized linear mixed models. In R, the `lme4` package is the most widely used for fitting mixed-effects models.
+
+## Creating Sample Longitudinal Data
+
+Let's create a sample longitudinal dataset to demonstrate mixed-effects models:
+
+```{r}
+# Set seed for reproducibility
+set.seed(123)
+
+# Create a longitudinal dataset
+n_subjects <- 30
+n_timepoints <- 4
+
+# Create the data frame
+longitudinal_data <- expand.grid(
+  Subject = factor(1:n_subjects),
+  Time = factor(1:n_timepoints, labels = c("Baseline", "Month1", "Month3", "Month6"))
+)
+
+# Add treatment group (between-subjects factor)
+longitudinal_data$Treatment <- factor(rep(c("Placebo", "Drug"), each = n_subjects/2)[longitudinal_data$Subject])
+
+# Add random subject effect (some subjects naturally have higher/lower values)
+subject_effect <- rep(rnorm(n_subjects, mean = 0, sd = 10), each = n_timepoints)
+
+# Add fixed effects
+time_effect <- c(0, -5, -10, -15)  # Effect of time (everyone improves over time)
+treatment_effect <- ifelse(longitudinal_data$Treatment == "Drug", -10, 0)  # Drug lowers values by 10 units
+
+# Generate the outcome variable (e.g., blood pressure)
+longitudinal_data$BP <- 140 +                                # Baseline value
+  subject_effect +                                          # Random subject effect
+  time_effect[as.numeric(longitudinal_data$Time)] +         # Fixed time effect
+  treatment_effect +                                        # Fixed treatment effect
+  rnorm(nrow(longitudinal_data), mean = 0, sd = 5)          # Random noise
+
+# View the first few rows
+head(longitudinal_data)
+```
+
+## Visualizing Longitudinal Data
+
+Before fitting a model, let's visualize the data:
+
+```{r}
+# Calculate mean BP by time and treatment
+summary_data <- longitudinal_data %>%
+  group_by(Time, Treatment) %>%
+  summarize(
+    mean_BP = mean(BP),
+    se_BP = sd(BP) / sqrt(n())
+  )
+
+# Plot mean BP over time by treatment
+ggplot(summary_data, aes(x = Time, y = mean_BP, group = Treatment, color = Treatment)) +
+  geom_line() +
+  geom_point() +
+  geom_errorbar(aes(ymin = mean_BP - se_BP, ymax = mean_BP + se_BP), width = 0.2) +
+  labs(title = "Mean Blood Pressure Over Time by Treatment",
+       x = "Time",
+       y = "Blood Pressure (mmHg)") +
+  theme_minimal()
+
+# Plot individual trajectories
+ggplot(longitudinal_data, aes(x = Time, y = BP, group = Subject, color = Treatment)) +
+  geom_line(alpha = 0.3) +
+  geom_point(alpha = 0.3) +
+  geom_line(data = summary_data, aes(x = Time, y = mean_BP, group = Treatment), 
+            size = 1.5, alpha = 1) +
+  labs(title = "Individual Blood Pressure Trajectories",
+       x = "Time",
+       y = "Blood Pressure (mmHg)") +
+  theme_minimal()
+```
+
+## Fitting a Mixed-Effects Model
+
+Now, let's fit a mixed-effects model using the `lme4` package:
+
+```{r}
+# Fit a linear mixed model with random intercepts for subjects
+mixed_model <- lmer(BP ~ Time * Treatment + (1 | Subject), data = longitudinal_data)
+
+# View the model summary
+summary(mixed_model)
+```
+
+The model formula `BP ~ Time * Treatment + (1 | Subject)` specifies:
+- Fixed effects: Time, Treatment, and their interaction
+- Random effects: Random intercept for each Subject (the `(1 | Subject)` term)
+
+This is similar to the following SAS PROC MIXED code:
+
+```
+proc mixed data=longitudinal_data;
+  class Subject Time Treatment;
+  model BP = Time Treatment Time*Treatment;
+  random intercept / subject=Subject;
+run;
+```
+
+## Interpreting the Results
+
+The output includes:
+- Fixed effects estimates (coefficients for Time, Treatment, and their interaction)
+- Random effects variance (how much variation is due to subject differences)
+- Residual variance (unexplained variation)
+
+The fixed effects show the estimated impact of time and treatment on blood pressure. The random effects show how much variation exists between subjects.
+
+## Comparing to a Simple Linear Model
+
+Let's compare the mixed model to a simple linear model that ignores the repeated measures structure:
+
+```{r}
+# Fit a simple linear model
+simple_model <- lm(BP ~ Time * Treatment, data = longitudinal_data)
+summary(simple_model)
+
+# Compare AIC (lower is better)
+AIC(mixed_model)
+AIC(simple_model)
+```
+
+The mixed model typically provides a better fit because it accounts for the correlation between measurements from the same subject.
+
+# Bayesian Analysis
+
+## Introduction to Bayesian Analysis
+
+Bayesian analysis is an approach to statistics that uses Bayes' theorem to update probabilities as more information becomes available. Unlike frequentist methods (which provide point estimates and p-values), Bayesian methods provide full probability distributions for parameters.
+
+In SAS, you might use PROC MCMC or PROC BGLIMM for Bayesian analysis. In R, there are several packages for Bayesian modeling, including:
+
+- `rstanarm`: User-friendly interface to Stan for common models
+- `brms`: Bayesian regression models using Stan
+- `rjags`: Interface to JAGS for Bayesian hierarchical models
+- `bayesplot`: Visualization for Bayesian models
+
+For this brief introduction, we'll use the `rstanarm` package if it's installed. If not, we'll just explain the concepts.
+
+```{r, eval=FALSE}
+# This code will only run if rstanarm is installed
+if (requireNamespace("rstanarm", quietly = TRUE)) {
+  library(rstanarm)
+  
+  # Fit a Bayesian linear model
+  bayes_model <- stan_glm(BP ~ Time * Treatment, 
+                          data = longitudinal_data,
+                          family = gaussian(),
+                          prior = normal(0, 10),
+                          prior_intercept = normal(140, 20),
+                          chains = 2, iter = 1000)
+  
+  # View the model summary
+  print(summary(bayes_model))
+  
+  # Plot the posterior distributions
+  plot(bayes_model, "areas", prob = 0.95)
+}
+```
+
+## Key Concepts in Bayesian Analysis
+
+Even without running the code, it's important to understand these key Bayesian concepts:
+
+1. **Prior Distributions**: Your beliefs about parameters before seeing the data
+2. **Likelihood**: How likely the data is, given the parameters
+3. **Posterior Distributions**: Updated beliefs about parameters after seeing the data
+4. **Markov Chain Monte Carlo (MCMC)**: Computational method to sample from posterior distributions
+5. **Credible Intervals**: Ranges containing a specified probability of the parameter value (unlike confidence intervals)
+
+## Advantages of Bayesian Analysis
+
+Bayesian analysis offers several advantages:
+- Incorporates prior knowledge
+- Provides full probability distributions for parameters
+- Handles small sample sizes better
+- Naturally accommodates hierarchical structures
+- Allows for more intuitive interpretation of results
+
+## SAS vs R for Bayesian Analysis
+
+SAS has PROC MCMC and PROC BGLIMM for Bayesian analysis, but R's ecosystem for Bayesian modeling is more extensive and actively developed. The Stan ecosystem (accessed through packages like `rstanarm` and `brms`) is particularly powerful and flexible.
+
+# High-Performance Computing
+
+As a SAS user, you're likely familiar with SAS's capabilities for handling large datasets efficiently. R also offers several approaches for improving performance and handling big data.
+
+## The data.table Package
+
+The `data.table` package is a high-performance alternative to data.frame and tibble for data manipulation. It's particularly efficient for large datasets.
+
+```{r}
+# Create a larger dataset
+set.seed(123)
+n <- 1e6  # 1 million rows
+
+# Create a data frame
+large_df <- data.frame(
+  id = 1:n,
+  group = sample(letters[1:5], n, replace = TRUE),
+  value = rnorm(n)
+)
+
+# Convert to data.table
+large_dt <- data.table(large_df)
+
+# Compare performance for a simple aggregation
+system.time({
+  # dplyr approach
+  result_dplyr <- large_df %>%
+    group_by(group) %>%
+    summarize(mean_value = mean(value))
+})
+
+system.time({
+  # data.table approach
+  result_dt <- large_dt[, .(mean_value = mean(value)), by = group]
+})
+```
+
+The `data.table` syntax is concise but different from dplyr:
+- `DT[i, j, by]` where:
+  - `i` is for row filtering (like `filter()`)
+  - `j` is for selecting or computing (like `select()` or `summarize()`)
+  - `by` is for grouping (like `group_by()`)
+
+## Parallel Processing
+
+R can use multiple cores for parallel processing using the `parallel` package:
+
+```{r}
+# Check how many cores are available
+num_cores <- parallel::detectCores()
+cat("Number of available cores:", num_cores, "\n")
+
+# Example of parallel processing using mclapply
+# (works on Mac/Linux; on Windows, use parLapply instead)
+system.time({
+  # Sequential processing
+  result_seq <- lapply(1:10, function(x) {
+    Sys.sleep(0.1)  # Simulate work
+    return(x^2)
+  })
+})
+
+if (.Platform$OS.type != "windows") {
+  system.time({
+    # Parallel processing
+    result_par <- parallel::mclapply(1:10, function(x) {
+      Sys.sleep(0.1)  # Simulate work
+      return(x^2)
+    }, mc.cores = min(2, num_cores))
+  })
+} else {
+  cat("On Windows, use parLapply with a cluster instead of mclapply\n")
+}
+```
+
+## Other High-Performance Strategies
+
+There are several other approaches for improving performance in R:
+
+1. **Use compiled code**: R can interface with C++ through the `Rcpp` package
+2. **Memory-efficient data structures**: Packages like `ff` and `bigmemory` for out-of-memory data
+3. **Database connections**: Connect directly to databases using `DBI`, `dbplyr`, etc.
+4. **Spark integration**: Use `sparklyr` to work with Apache Spark from R
+5. **GPU computing**: Packages like `gpuR` for GPU-accelerated computing
+
+## SAS vs R for High-Performance Computing
+
+SAS is known for its efficient handling of large datasets, especially on disk. R traditionally works in-memory, which can be a limitation, but modern R packages and techniques can overcome many of these limitations. The choice between SAS and R for big data often depends on your specific needs and infrastructure.
+
+# Shiny: Interactive Web Applications
+
+One of R's unique features is the ability to create interactive web applications using the `shiny` package. This has no direct equivalent in SAS (though SAS does have products like SAS Visual Analytics).
+
+## What is Shiny?
+
+Shiny is an R package that makes it easy to build interactive web applications directly from R. You don't need to know HTML, CSS, or JavaScript (though they can be helpful for advanced customization).
+
+A Shiny app consists of two main components:
+1. **UI (User Interface)**: Defines what the app looks like
+2. **Server**: Defines how the app works (the logic)
+
+## A Simple Shiny App
+
+Here's a simple Shiny app that allows users to explore our longitudinal data:
+
+```{r, eval=FALSE}
+# This code won't run in the R Markdown document
+# It's just to show the structure of a Shiny app
+
+library(shiny)
+
+# Define UI
+ui <- fluidPage(
+  titlePanel("Blood Pressure Over Time"),
+  
+  sidebarLayout(
+    sidebarPanel(
+      selectInput("treatment", "Select Treatment:",
+                  choices = c("All", "Placebo", "Drug"),
+                  selected = "All")
+    ),
+    
+    mainPanel(
+      plotOutput("bpPlot")
+    )
+  )
+)
+
+# Define server logic
+server <- function(input, output) {
+  
+  # Filter data based on user input
+  filtered_data <- reactive({
+    if (input$treatment == "All") {
+      longitudinal_data
+    } else {
+      filter(longitudinal_data, Treatment == input$treatment)
+    }
+  })
+  
+  # Create the plot
+  output$bpPlot <- renderPlot({
+    ggplot(filtered_data(), aes(x = Time, y = BP, group = Subject, color = Treatment)) +
+      geom_line(alpha = 0.3) +
+      geom_point(alpha = 0.3) +
+      stat_summary(aes(group = Treatment), fun = mean, geom = "line", size = 1.5) +
+      labs(title = paste("Blood Pressure Over Time:", input$treatment),
+           x = "Time",
+           y = "Blood Pressure (mmHg)") +
+      theme_minimal()
+  })
+}
+
+# Run the application
+shinyApp(ui = ui, server = server)
+```
+
+## Running a Sample Shiny App
+
+While we can't run a Shiny app directly in this R Markdown document, you can run one of the built-in examples:
+
+```{r, eval=FALSE}
+# Run a sample Shiny app
+shiny::runExample("01_hello")
+```
+
+To run this code, you would need to execute it in the R console or create a separate R script.
+
+## Deploying Shiny Apps
+
+Shiny apps can be deployed in several ways:
+1. **shinyapps.io**: RStudio's hosting service (free tier available)
+2. **Shiny Server**: Open-source or commercial server software
+3. **RStudio Connect**: Commercial product for hosting R content
+
+## Use Cases for Shiny in Biomedical Research
+
+Shiny is particularly useful in biomedical research for:
+- Interactive data exploration
+- Custom dashboards for monitoring clinical trials
+- Educational tools for explaining statistical concepts
+- Decision support tools for clinicians
+- Patient-facing applications for data collection or visualization
+
+# Further Resources
+
+## Mixed-Effects Models
+- [lme4 package documentation](https://cran.r-project.org/web/packages/lme4/vignettes/lmer.pdf)
+- Book: "Mixed-Effects Models in S and S-PLUS" by Pinheiro and Bates
+- [R-bloggers tutorial on mixed models](https://www.r-bloggers.com/2015/10/getting-started-with-mixed-effect-models-in-r/)
+
+## Bayesian Analysis
+- [rstanarm vignettes](https://mc-stan.org/rstanarm/articles/)
+- [brms package documentation](https://paul-buerkner.github.io/brms/)
+- Book: "Statistical Rethinking" by Richard McElreath
+- [Bayesian Analysis with R course on Coursera](https://www.coursera.org/learn/bayesian)
+
+## High-Performance Computing
+- [data.table documentation](https://rdatatable.gitlab.io/data.table/)
+- [Efficient R Programming book](https://csgillespie.github.io/efficientR/)
+- [R for Big Data on GitHub](https://github.com/rstudio/bigdataclass)
+- [sparklyr documentation](https://spark.rstudio.com/)
+
+## Shiny
+- [Shiny tutorial](https://shiny.rstudio.com/tutorial/)
+- [Mastering Shiny book](https://mastering-shiny.org/)
+- [Shiny Gallery](https://shiny.rstudio.com/gallery/)
+- [Shiny Cheat Sheet](https://shiny.rstudio.com/images/shiny-cheatsheet.pdf)
+
+# SAS vs R: Advanced Topics Comparison
+
+Let's summarize the key differences and similarities between SAS and R for these advanced topics:
+
+| Topic | SAS | R |
+|-------|-----|---|
+| Mixed Models | PROC MIXED, PROC GLIMMIX | lme4, nlme packages |
+| Bayesian Analysis | PROC MCMC, PROC BGLIMM | rstanarm, brms, rjags packages |
+| High-Performance Computing | SAS High-Performance Analytics, In-database processing | data.table, parallel, Rcpp, sparklyr |
+| Interactive Applications | SAS Visual Analytics (commercial) | Shiny (free and open-source) |
+
+Key differences:
+1. **Ecosystem**: R has a more diverse and rapidly evolving ecosystem of packages for advanced methods
+2. **Cost**: Many advanced capabilities in SAS require additional modules, while R packages are free
+3. **Flexibility**: R often offers more flexibility for customization and extension
+4. **Learning Curve**: SAS procedures may be easier to use initially, but R packages often offer more options
+5. **Integration**: R integrates more easily with other open-source tools and languages
+
+# Exercises
+
+## Exercise 1: Mixed Model Practice
+
+Using the `longitudinal_data` dataset we created, try fitting a mixed-effects model with random intercepts for each subject. After fitting, use `summary()` to see the results. Compare the fixed effect of Time to what you would get if you ran a simple linear model ignoring subject (or what you might get from a repeated measures ANOVA in SAS).
+
+```{r}
+# Your code here
+```
+
+## Exercise 2: Shiny Exploration
+
+If you have RStudio available, run one of the built-in Shiny examples using `runExample("01_hello")`. Then, outline (in markdown) an idea for a Shiny app you might create for your own data – what inputs and outputs would it have?
+
+*Your response here*
+
+## Exercise 3: Performance Experiment
+
+Compare the performance of base R, dplyr, and data.table for a simple operation like calculating the mean by group. Use `system.time()` to measure the execution time.
+
+```{r}
+# Your code here
+```
+
+# Conclusion
+
+In this lesson, you've been introduced to several advanced topics in R: mixed-effects models, Bayesian analysis, high-performance computing, and Shiny applications. These capabilities extend R beyond basic statistical analysis and data manipulation, making it a powerful tool for complex biomedical research.
+
+Key takeaways:
+- Mixed-effects models in R can handle hierarchical and longitudinal data similar to SAS PROC MIXED
+- Bayesian analysis in R offers flexible and powerful tools for probabilistic modeling
+- R provides several approaches for improving performance with large datasets
+- Shiny allows you to create interactive web applications directly from R
+
+These advanced topics showcase R's flexibility and extensibility. While SAS offers similar capabilities (often through additional modules), R's open-source nature and active community development mean that cutting-edge methods are often available in R first.
+
+In the next and final lesson, we'll explore reproducibility and reporting using R Markdown and Quarto, showing how to create professional, reproducible documents that combine code, results, and narrative.
+
+# Session Information
+
+```{r}
+sessionInfo()
+``` 

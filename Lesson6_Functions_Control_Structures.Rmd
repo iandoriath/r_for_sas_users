@@ -1,0 +1,477 @@
+---
+title: "Lesson 6: Writing Custom Functions and Control Structures in R"
+author: "Your Name"
+date: "`r Sys.Date()`"
+output: 
+  html_document:
+    toc: true
+    toc_float: true
+    theme: united
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+# Install required packages if not already installed
+if (!requireNamespace("tidyverse", quietly = TRUE)) install.packages("tidyverse")
+
+# Load the packages
+library(tidyverse)  # Loads dplyr and other tidyverse packages
+```
+
+# Introduction
+
+Welcome to Lesson 6 of our curriculum for SAS users learning R! In this lesson, we'll explore how to write custom functions and use control structures in R. As a SAS user, you're familiar with macros for code reuse and DATA step logic for control flow. R offers similar capabilities with a more functional programming approach.
+
+## Learning Objectives
+
+By the end of this lesson, you will be able to:
+
+1. Create custom functions in R to automate repetitive tasks
+2. Understand the differences between R functions and SAS macros
+3. Use control structures like if/else statements and loops
+4. Apply functions to data frames using vectorized operations
+5. Debug and troubleshoot functions
+6. Recognize when to use vectorized operations versus explicit loops
+
+# Functions in R vs Macros in SAS
+
+In SAS, you use macros to generate code and automate repetitive tasks. In R, you use functions. While they serve similar purposes, they work quite differently:
+
+- **SAS macros** generate code that is then executed. They're primarily a text substitution and code generation tool.
+- **R functions** are objects that take inputs, perform operations, and return outputs directly. They're first-class objects that can be passed to other functions.
+
+Let's start by creating a simple function in R:
+
+```{r}
+# A simple function to calculate BMI
+calc_bmi <- function(weight_kg, height_m) {
+  bmi <- weight_kg / (height_m^2)
+  return(bmi)
+}
+
+# Test the function
+calc_bmi(70, 1.75)
+```
+
+The structure of an R function is:
+1. Name assignment using `<-`
+2. The `function()` keyword with parameters in parentheses
+3. The function body in curly braces `{}`
+4. A `return()` statement (optional, as R returns the last evaluated expression by default)
+
+## Default Arguments and Documentation
+
+Functions can have default arguments and documentation:
+
+```{r}
+#' Calculate Body Mass Index (BMI)
+#' 
+#' @param weight_kg Weight in kilograms
+#' @param height_m Height in meters
+#' @param round_digits Number of decimal places to round the result
+#' @return BMI value (kg/m^2)
+#' @examples
+#' calc_bmi_improved(70, 1.75)
+#' calc_bmi_improved(70, 1.75, round_digits = 1)
+calc_bmi_improved <- function(weight_kg, height_m, round_digits = 2) {
+  bmi <- weight_kg / (height_m^2)
+  bmi <- round(bmi, digits = round_digits)
+  return(bmi)
+}
+
+# Test with default rounding
+calc_bmi_improved(70, 1.75)
+
+# Test with custom rounding
+calc_bmi_improved(70, 1.75, round_digits = 1)
+```
+
+The comments starting with `#'` are special Roxygen2 comments that can be used to generate documentation for packages. Even if you're not creating a package, this style of documentation is helpful for understanding what the function does.
+
+## Comparing to SAS Macros
+
+Let's compare our R function to an equivalent SAS macro:
+
+**SAS Macro:**
+```
+%macro calc_bmi(weight_kg, height_m);
+  %let bmi = %sysevalf(&weight_kg / (&height_m ** 2));
+  &bmi
+%mend calc_bmi;
+
+%put BMI: %calc_bmi(70, 1.75);
+```
+
+**R Function:**
+```{r}
+calc_bmi <- function(weight_kg, height_m) {
+  bmi <- weight_kg / (height_m^2)
+  return(bmi)
+}
+
+cat("BMI:", calc_bmi(70, 1.75), "\n")
+```
+
+Key differences:
+1. SAS macros use `%` symbols and macro variables with `&`
+2. R functions use standard variable assignment
+3. SAS macros generate code, while R functions execute code directly
+4. R functions are more like SAS PROC or DATA step functions than macros
+
+# Applying Functions to Data
+
+Let's create a sample dataset and apply our BMI function:
+
+```{r}
+# Create a sample dataset
+patients <- data.frame(
+  ID = 1:5,
+  Weight_kg = c(70, 65, 80, 85, 60),
+  Height_m = c(1.75, 1.60, 1.80, 1.90, 1.65)
+)
+
+# Apply the function to calculate BMI for each patient
+patients$BMI <- calc_bmi(patients$Weight_kg, patients$Height_m)
+
+# View the result
+patients
+```
+
+Notice how the function automatically works on vectors! This is because R functions are vectorized by default, unlike SAS macros which typically operate on one value at a time.
+
+## Using Functions with dplyr
+
+We can also use our function within dplyr's `mutate()`:
+
+```{r}
+# Using the function with mutate()
+patients %>%
+  mutate(BMI = calc_bmi(Weight_kg, Height_m),
+         BMI_Category = case_when(
+           BMI < 18.5 ~ "Underweight",
+           BMI < 25 ~ "Normal",
+           BMI < 30 ~ "Overweight",
+           TRUE ~ "Obese"
+         ))
+```
+
+# Control Structures in R
+
+## Conditional Statements (if/else)
+
+In SAS, you use IF-THEN-ELSE statements in DATA steps. In R, you use `if`, `else if`, and `else`:
+
+```{r}
+# Function to categorize BMI
+categorize_bmi <- function(bmi) {
+  if (bmi < 18.5) {
+    return("Underweight")
+  } else if (bmi < 25) {
+    return("Normal")
+  } else if (bmi < 30) {
+    return("Overweight")
+  } else {
+    return("Obese")
+  }
+}
+
+# Test the function
+categorize_bmi(22.5)
+categorize_bmi(32.1)
+```
+
+## Vectorized Conditionals
+
+The `categorize_bmi()` function above works for a single value, but not for vectors. For vectorized operations, use `ifelse()` or `case_when()`:
+
+```{r}
+# Vectorized version using case_when
+categorize_bmi_vec <- function(bmi) {
+  case_when(
+    bmi < 18.5 ~ "Underweight",
+    bmi < 25 ~ "Normal",
+    bmi < 30 ~ "Overweight",
+    TRUE ~ "Obese"
+  )
+}
+
+# Test on a vector
+bmi_values <- c(17.5, 22.0, 26.5, 31.0)
+categorize_bmi_vec(bmi_values)
+
+# Apply to our dataset
+patients %>%
+  mutate(BMI_Category = categorize_bmi_vec(BMI))
+```
+
+## Loops in R
+
+In SAS, looping is implicit in DATA steps (which process one observation at a time) or explicit with DO loops. In R, you use `for`, `while`, or `repeat` loops:
+
+```{r}
+# For loop example
+for (i in 1:5) {
+  cat("Patient", i, "has BMI:", patients$BMI[i], "\n")
+}
+
+# While loop example
+i <- 1
+while (i <= 3) {
+  cat("Patient", i, "has BMI:", patients$BMI[i], "\n")
+  i <- i + 1
+}
+```
+
+## Vectorization vs. Loops
+
+In R, vectorized operations are generally preferred over loops for performance reasons. Let's compare:
+
+```{r}
+# Create a larger dataset
+set.seed(123)
+large_patients <- data.frame(
+  ID = 1:1000,
+  Weight_kg = rnorm(1000, mean = 70, sd = 10),
+  Height_m = rnorm(1000, mean = 1.7, sd = 0.1)
+)
+
+# Using a loop (slower)
+system.time({
+  bmi_loop <- numeric(1000)
+  for (i in 1:1000) {
+    bmi_loop[i] <- calc_bmi(large_patients$Weight_kg[i], large_patients$Height_m[i])
+  }
+})
+
+# Using vectorization (faster)
+system.time({
+  bmi_vec <- calc_bmi(large_patients$Weight_kg, large_patients$Height_m)
+})
+```
+
+As you can see, vectorized operations are much faster in R. This is different from SAS, where loops are often the primary way to process data.
+
+# Apply Functions and Functional Programming
+
+R has a family of "apply" functions that apply a function to elements of an object. These are similar to BY-group processing in SAS but more flexible:
+
+## lapply() and sapply()
+
+```{r}
+# List of vectors
+weight_lists <- list(
+  group_a = c(70, 65, 80),
+  group_b = c(85, 60, 75)
+)
+
+# Apply mean() to each element of the list
+lapply(weight_lists, mean)  # Returns a list
+sapply(weight_lists, mean)  # Returns a vector or matrix
+```
+
+## Using apply() for matrices
+
+```{r}
+# Create a matrix of measurements
+measurements <- matrix(c(
+  # Weight, Height for 5 patients
+  70, 1.75,
+  65, 1.60,
+  80, 1.80,
+  85, 1.90,
+  60, 1.65
+), ncol = 2, byrow = TRUE)
+
+colnames(measurements) <- c("Weight_kg", "Height_m")
+
+# Calculate mean of each column
+apply(measurements, 2, mean)  # 2 indicates columns
+
+# Calculate mean of each row
+apply(measurements, 1, function(x) x[1] / (x[2]^2))  # Calculate BMI for each row
+```
+
+## Using purrr for more complex operations
+
+The purrr package (part of tidyverse) provides more consistent and powerful functional programming tools:
+
+```{r}
+# Using map functions from purrr
+weight_lists %>%
+  map_dbl(mean)  # map_dbl ensures a numeric vector is returned
+
+# Map over multiple inputs
+map2_dbl(
+  large_patients$Weight_kg[1:5],
+  large_patients$Height_m[1:5],
+  ~ .x / (.y^2)  # Formula notation for the function
+)
+```
+
+# Real-world Example: Group-wise Statistics Function
+
+Let's create a more complex function that calculates summary statistics by group, similar to what you might do with PROC MEANS in SAS:
+
+```{r}
+# Create a function to summarize a numeric variable by group
+summarize_by_group <- function(data, group_var, outcome_var) {
+  # Convert strings to symbols for dplyr
+  group_var <- sym(group_var)
+  outcome_var <- sym(outcome_var)
+  
+  # Use enquo and !! to properly quote the variables
+  result <- data %>%
+    group_by(!!group_var) %>%
+    summarize(
+      n = n(),
+      mean = mean(!!outcome_var, na.rm = TRUE),
+      sd = sd(!!outcome_var, na.rm = TRUE),
+      min = min(!!outcome_var, na.rm = TRUE),
+      q1 = quantile(!!outcome_var, 0.25, na.rm = TRUE),
+      median = median(!!outcome_var, na.rm = TRUE),
+      q3 = quantile(!!outcome_var, 0.75, na.rm = TRUE),
+      max = max(!!outcome_var, na.rm = TRUE)
+    )
+  
+  return(result)
+}
+
+# Create a sample clinical dataset
+set.seed(123)
+clinical_data <- data.frame(
+  PatientID = 1:100,
+  Treatment = sample(c("Placebo", "Drug A", "Drug B"), 100, replace = TRUE),
+  Sex = sample(c("Male", "Female"), 100, replace = TRUE),
+  Age = rnorm(100, mean = 50, sd = 10),
+  BP = rnorm(100, mean = 120, sd = 15)
+)
+
+# Use our function
+summarize_by_group(clinical_data, "Treatment", "BP")
+summarize_by_group(clinical_data, "Sex", "Age")
+```
+
+This function is much more powerful than a SAS macro because:
+1. It works with any data frame
+2. It can summarize any numeric variable by any grouping variable
+3. It returns a data frame that can be further processed
+
+# Error Handling and Debugging
+
+In SAS, you might use `%put` statements or the log to debug macros. In R, you have several options:
+
+## Basic Error Handling
+
+```{r, error=TRUE}
+# Function with error handling
+safe_calc_bmi <- function(weight_kg, height_m) {
+  # Check inputs
+  if (!is.numeric(weight_kg) || !is.numeric(height_m)) {
+    stop("Weight and height must be numeric")
+  }
+  
+  if (any(height_m <= 0, na.rm = TRUE)) {
+    stop("Height must be positive")
+  }
+  
+  # Calculate BMI
+  bmi <- weight_kg / (height_m^2)
+  return(bmi)
+}
+
+# Test with invalid inputs
+try(safe_calc_bmi("seventy", 1.75))
+try(safe_calc_bmi(70, 0))
+```
+
+## Using print() for Debugging
+
+You can add `print()` statements to see intermediate values:
+
+```{r}
+debug_calc_bmi <- function(weight_kg, height_m) {
+  print(paste("Input weight:", weight_kg))
+  print(paste("Input height:", height_m))
+  
+  bmi <- weight_kg / (height_m^2)
+  print(paste("Calculated BMI:", bmi))
+  
+  return(bmi)
+}
+
+debug_calc_bmi(70, 1.75)
+```
+
+## Using RStudio's Debugging Tools
+
+RStudio provides interactive debugging tools:
+- `browser()`: Pauses execution and allows interactive inspection
+- `debug()`: Flags a function for step-by-step debugging
+- `traceback()`: Shows the call stack after an error
+
+These are more advanced than what's available in SAS and make debugging complex functions easier.
+
+# SAS vs R: Function Programming Comparison
+
+Let's summarize the key differences between SAS macros and R functions:
+
+| Aspect | SAS Macros | R Functions |
+|--------|------------|-------------|
+| Purpose | Code generation | Direct computation |
+| Syntax | `%macro`, `%mend`, `&` for variables | `function()`, `{}`, standard variable names |
+| Scope | Global by default | Local by default |
+| Return values | Text substitution | Any R object |
+| Vectorization | No built-in vectorization | Naturally vectorized |
+| Debugging | Log messages | Interactive debugging tools |
+| Reusability | Can be stored in macro libraries | Can be stored in packages or scripts |
+| First-class objects | No | Yes (can be passed to other functions) |
+
+For SAS users, the key mindset shift is understanding that:
+1. R functions operate on entire vectors or data frames at once
+2. R functions return objects that can be used in further calculations
+3. R's functional programming approach is more flexible than SAS's macro language
+
+# Exercises
+
+## Exercise 1: Creating a BMI Function
+
+Write a custom function `calc_bmi(weight_kg, height_m)` that calculates body mass index (BMI = weight (kg) / height (m)^2) and returns the BMI value. Test your function on a few sample inputs. Then use your function within a `mutate()` call to add a BMI column to a patient data frame (with weight and height columns).
+
+```{r}
+# Your code here
+```
+
+## Exercise 2: Group Summary Function
+
+Create a function `summarize_by_group(data, group_var, outcome_var)` that takes a data frame and two column names (group and outcome) and returns a data frame with count, mean, and standard deviation of the outcome for each group. Test this function on a dataset (e.g., summarize blood pressure by treatment group).
+
+```{r}
+# Your code here
+```
+
+## Exercise 3: Loops and Conditionals
+
+Write a loop that goes through numbers 1 to 10, and prints whether each number is even or odd. Then, consider how you might achieve the same result without an explicit loop (hint: R can do `ifelse()` on a vector directly).
+
+```{r}
+# Your code here
+```
+
+# Conclusion
+
+In this lesson, you've learned how to write custom functions and use control structures in R. You've seen how R's functional programming approach differs from SAS's macro language, and how to leverage vectorization for efficient code.
+
+Key takeaways:
+- R functions are more powerful and flexible than SAS macros
+- Vectorized operations are preferred over loops in R for performance
+- Control structures like if/else and for loops work similarly to SAS but with different syntax
+- The apply family of functions and purrr provide powerful tools for functional programming
+- Error handling and debugging in R offer more interactive options than SAS
+
+In the next lesson, we'll explore statistical analysis in R, including hypothesis tests, regression models, and survival analysis.
+
+# Session Information
+
+```{r}
+sessionInfo()
+``` 

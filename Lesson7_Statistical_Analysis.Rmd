@@ -1,0 +1,468 @@
+---
+title: "Lesson 7: Statistical Analysis in R – from Descriptive Stats to Modeling"
+author: "Your Name"
+date: "`r Sys.Date()`"
+output: 
+  html_document:
+    toc: true
+    toc_float: true
+    theme: united
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE)
+# Install required packages if not already installed
+if (!requireNamespace("tidyverse", quietly = TRUE)) install.packages("tidyverse")
+if (!requireNamespace("survival", quietly = TRUE)) install.packages("survival")
+if (!requireNamespace("survminer", quietly = TRUE)) install.packages("survminer")
+if (!requireNamespace("broom", quietly = TRUE)) install.packages("broom")
+
+# Load the packages
+library(tidyverse)  # For data manipulation and visualization
+library(survival)   # For survival analysis
+library(survminer)  # For survival plots
+library(broom)      # For tidying model outputs
+```
+
+# Introduction
+
+Welcome to Lesson 7 of our curriculum for SAS users learning R! In this lesson, we'll explore statistical analysis in R, from basic descriptive statistics to more complex modeling techniques. As a SAS user, you're familiar with procedures like PROC TTEST, PROC GLM, and PROC LOGISTIC. R offers similar capabilities through functions, with a more flexible and interactive approach.
+
+## Learning Objectives
+
+By the end of this lesson, you will be able to:
+
+1. Perform basic descriptive statistics and hypothesis tests in R
+2. Conduct ANOVA and fit linear regression models
+3. Implement logistic regression for binary outcomes
+4. Perform basic survival analysis
+5. Interpret statistical results in R
+6. Understand the parallels between SAS procedures and R functions
+
+# Creating Sample Data
+
+Let's create a sample clinical trial dataset to work with throughout this lesson:
+
+```{r}
+# Set seed for reproducibility
+set.seed(123)
+
+# Create a clinical trial dataset
+clinical_trial <- data.frame(
+  PatientID = 1:100,
+  Age = round(rnorm(100, mean = 55, sd = 10)),
+  Sex = factor(sample(c("Male", "Female"), 100, replace = TRUE)),
+  Treatment = factor(sample(c("Placebo", "Drug A", "Drug B"), 100, replace = TRUE)),
+  Baseline_BP = round(rnorm(100, mean = 140, sd = 15)),
+  Final_BP = NA,  # We'll calculate this based on treatment effect
+  Cholesterol = round(rnorm(100, mean = 200, sd = 25)),
+  Outcome = factor(NA, levels = c("Failure", "Success"))  # Binary outcome
+)
+
+# Add treatment effects
+clinical_trial$Final_BP <- clinical_trial$Baseline_BP + 
+  ifelse(clinical_trial$Treatment == "Placebo", rnorm(100, -5, 10),
+         ifelse(clinical_trial$Treatment == "Drug A", rnorm(100, -15, 10),
+                rnorm(100, -25, 10)))  # Drug B has strongest effect
+
+# Create binary outcome based on BP reduction
+clinical_trial$Outcome <- factor(
+  ifelse(clinical_trial$Final_BP < clinical_trial$Baseline_BP - 10, "Success", "Failure"),
+  levels = c("Failure", "Success")
+)
+
+# Calculate BP change
+clinical_trial$BP_Change <- clinical_trial$Final_BP - clinical_trial$Baseline_BP
+
+# View the first few rows
+head(clinical_trial)
+```
+
+# Descriptive Statistics and Hypothesis Tests
+
+## Descriptive Statistics
+
+In SAS, you might use PROC MEANS or PROC UNIVARIATE for descriptive statistics. In R, there are several approaches:
+
+```{r}
+# Basic summary statistics
+summary(clinical_trial[, c("Age", "Baseline_BP", "Final_BP", "BP_Change")])
+
+# Group-wise statistics using dplyr
+clinical_trial %>%
+  group_by(Treatment) %>%
+  summarize(
+    n = n(),
+    mean_age = mean(Age),
+    mean_baseline_bp = mean(Baseline_BP),
+    mean_final_bp = mean(Final_BP),
+    mean_bp_change = mean(BP_Change),
+    sd_bp_change = sd(BP_Change)
+  )
+```
+
+## Two-Sample t-test
+
+In SAS, you would use PROC TTEST. In R, we use the `t.test()` function:
+
+```{r}
+# Compare BP change between Placebo and Drug B
+placebo_data <- clinical_trial %>% filter(Treatment == "Placebo")
+drugB_data <- clinical_trial %>% filter(Treatment == "Drug B")
+
+t_test_result <- t.test(placebo_data$BP_Change, drugB_data$BP_Change)
+t_test_result
+```
+
+Let's compare this to what you would see in SAS:
+
+**SAS PROC TTEST:**
+```
+proc ttest data=clinical_trial;
+  class Treatment;
+  var BP_Change;
+  where Treatment in ("Placebo", "Drug B");
+run;
+```
+
+The R output provides:
+- The t-statistic
+- Degrees of freedom
+- p-value
+- Confidence interval for the difference in means
+- Sample means
+
+This is similar to what PROC TTEST provides, though the format is different.
+
+## Chi-Square Test
+
+For categorical data, SAS uses PROC FREQ with the CHISQ option. In R, we use `chisq.test()`:
+
+```{r}
+# Create a contingency table
+outcome_table <- table(clinical_trial$Treatment, clinical_trial$Outcome)
+outcome_table
+
+# Perform chi-square test
+chi_sq_result <- chisq.test(outcome_table)
+chi_sq_result
+```
+
+Let's visualize this relationship:
+
+```{r}
+# Bar plot of outcomes by treatment
+ggplot(clinical_trial, aes(x = Treatment, fill = Outcome)) +
+  geom_bar(position = "fill") +
+  labs(title = "Proportion of Outcomes by Treatment",
+       y = "Proportion",
+       x = "Treatment Group") +
+  theme_minimal()
+```
+
+# ANOVA and Linear Models
+
+## One-Way ANOVA
+
+In SAS, you would use PROC GLM or PROC ANOVA. In R, we can use `aov()` or `lm()`:
+
+```{r}
+# One-way ANOVA using aov()
+anova_result <- aov(BP_Change ~ Treatment, data = clinical_trial)
+summary(anova_result)
+
+# Same analysis using lm()
+lm_anova <- lm(BP_Change ~ Treatment, data = clinical_trial)
+anova(lm_anova)
+```
+
+The output shows:
+- Degrees of freedom
+- Sum of squares
+- Mean squares
+- F-value
+- p-value
+
+This is similar to the ANOVA table from PROC GLM in SAS.
+
+## Post-hoc Tests
+
+For pairwise comparisons after ANOVA, SAS might use the LSMEANS statement with adjustments. In R, we can use `TukeyHSD()`:
+
+```{r}
+# Tukey's Honest Significant Difference
+tukey_result <- TukeyHSD(anova_result)
+tukey_result
+```
+
+## Linear Regression
+
+In SAS, you would use PROC REG or PROC GLM. In R, we use `lm()`:
+
+```{r}
+# Simple linear regression
+lm_simple <- lm(Final_BP ~ Baseline_BP, data = clinical_trial)
+summary(lm_simple)
+
+# Multiple linear regression
+lm_multiple <- lm(Final_BP ~ Baseline_BP + Age + Treatment, data = clinical_trial)
+summary(lm_multiple)
+```
+
+The output includes:
+- Coefficients with standard errors, t-values, and p-values
+- R-squared and adjusted R-squared
+- F-statistic and overall p-value
+
+This is similar to the output from PROC REG in SAS, though the format is different.
+
+## Visualizing the Model
+
+Let's visualize the relationship between baseline and final BP, colored by treatment:
+
+```{r}
+ggplot(clinical_trial, aes(x = Baseline_BP, y = Final_BP, color = Treatment)) +
+  geom_point() +
+  geom_smooth(method = "lm", se = FALSE) +
+  labs(title = "Relationship between Baseline and Final BP",
+       x = "Baseline BP (mmHg)",
+       y = "Final BP (mmHg)") +
+  theme_minimal()
+```
+
+## Extracting Model Information
+
+In SAS, you might use ODS OUTPUT to capture model results. In R, we can use the `broom` package to tidy model outputs:
+
+```{r}
+# Get tidy coefficient table
+tidy(lm_multiple)
+
+# Get model performance metrics
+glance(lm_multiple)
+
+# Get fitted values and residuals
+augment(lm_multiple) %>% head()
+```
+
+## Diagnostic Plots
+
+In SAS, you might use the PLOTS option in PROC REG. In R, we can use the built-in `plot()` function or create custom plots:
+
+```{r}
+# Basic diagnostic plots
+par(mfrow = c(2, 2))
+plot(lm_multiple)
+```
+
+# Logistic Regression
+
+In SAS, you would use PROC LOGISTIC. In R, we use `glm()` with `family = binomial`:
+
+```{r}
+# Logistic regression
+logistic_model <- glm(Outcome ~ Treatment + Age + Baseline_BP, 
+                      family = binomial(link = "logit"), 
+                      data = clinical_trial)
+summary(logistic_model)
+```
+
+The output includes:
+- Coefficients with standard errors, z-values, and p-values
+- AIC (Akaike Information Criterion)
+- Null and residual deviance
+
+This is similar to the output from PROC LOGISTIC in SAS, though the format is different.
+
+## Odds Ratios
+
+In SAS, PROC LOGISTIC provides odds ratios directly. In R, we need to exponentiate the coefficients:
+
+```{r}
+# Calculate odds ratios and confidence intervals
+exp(cbind(OR = coef(logistic_model), confint(logistic_model)))
+```
+
+## Predicted Probabilities
+
+Let's calculate and visualize predicted probabilities:
+
+```{r}
+# Add predicted probabilities to the dataset
+clinical_trial$predicted_prob <- predict(logistic_model, type = "response")
+
+# Plot predicted probabilities by treatment
+ggplot(clinical_trial, aes(x = Baseline_BP, y = predicted_prob, color = Treatment)) +
+  geom_point() +
+  geom_smooth(method = "loess", se = FALSE) +
+  labs(title = "Predicted Probability of Success by Baseline BP",
+       x = "Baseline BP (mmHg)",
+       y = "Predicted Probability of Success") +
+  theme_minimal()
+```
+
+# Survival Analysis
+
+Survival analysis is common in biomedical research. In SAS, you would use PROC LIFETEST and PROC PHREG. In R, we use the `survival` package.
+
+Let's create a survival dataset:
+
+```{r}
+# Create a survival dataset
+set.seed(456)
+n <- 200
+survival_data <- data.frame(
+  PatientID = 1:n,
+  Treatment = factor(sample(c("Placebo", "Drug A", "Drug B"), n, replace = TRUE)),
+  Age = round(rnorm(n, mean = 60, sd = 12)),
+  Time = NA,
+  Status = NA
+)
+
+# Generate survival times based on treatment
+# Placebo: baseline hazard
+# Drug A: 20% reduction in hazard
+# Drug B: 40% reduction in hazard
+survival_data$Time <- round(rexp(n, rate = ifelse(survival_data$Treatment == "Placebo", 1/20,
+                                           ifelse(survival_data$Treatment == "Drug A", 1/25, 1/33))))
+
+# Add censoring (about 30% of patients)
+survival_data$Status <- sample(c(1, 0), n, replace = TRUE, prob = c(0.7, 0.3))
+
+# View the first few rows
+head(survival_data)
+```
+
+## Kaplan-Meier Curves
+
+In SAS, you would use PROC LIFETEST. In R, we use `survfit()`:
+
+```{r}
+# Create a survival object
+surv_obj <- Surv(time = survival_data$Time, event = survival_data$Status)
+
+# Fit Kaplan-Meier curves by treatment
+km_fit <- survfit(surv_obj ~ Treatment, data = survival_data)
+
+# Summary of the Kaplan-Meier fit
+summary(km_fit)
+
+# Plot Kaplan-Meier curves
+ggsurvplot(km_fit, data = survival_data, 
+           pval = TRUE,  # Add p-value from log-rank test
+           risk.table = TRUE,  # Add risk table
+           conf.int = TRUE,  # Add confidence intervals
+           xlab = "Time (months)",
+           ylab = "Survival Probability",
+           title = "Kaplan-Meier Curves by Treatment Group")
+```
+
+## Cox Proportional Hazards Model
+
+In SAS, you would use PROC PHREG. In R, we use `coxph()`:
+
+```{r}
+# Fit Cox proportional hazards model
+cox_model <- coxph(surv_obj ~ Treatment + Age, data = survival_data)
+summary(cox_model)
+```
+
+The output includes:
+- Coefficients with standard errors, z-values, and p-values
+- Hazard ratios (exp(coef)) with confidence intervals
+- Concordance, likelihood ratio test, Wald test, and score (logrank) test
+
+This is similar to the output from PROC PHREG in SAS.
+
+## Hazard Ratios
+
+Let's extract and visualize the hazard ratios:
+
+```{r}
+# Extract hazard ratios and confidence intervals
+cox_tidy <- tidy(cox_model, exponentiate = TRUE, conf.int = TRUE)
+cox_tidy
+
+# Forest plot of hazard ratios
+ggplot(cox_tidy, aes(x = estimate, y = term, xmin = conf.low, xmax = conf.high)) +
+  geom_point() +
+  geom_errorbarh(height = 0.2) +
+  geom_vline(xintercept = 1, linetype = "dashed") +
+  scale_x_log10() +
+  labs(title = "Hazard Ratios with 95% Confidence Intervals",
+       x = "Hazard Ratio (log scale)",
+       y = "") +
+  theme_minimal()
+```
+
+# SAS vs R: Statistical Analysis Comparison
+
+Let's summarize the key differences and similarities between SAS and R for statistical analysis:
+
+| Analysis | SAS | R |
+|----------|-----|---|
+| Descriptive statistics | PROC MEANS, PROC UNIVARIATE | summary(), mean(), sd(), etc. |
+| t-test | PROC TTEST | t.test() |
+| Chi-square test | PROC FREQ with CHISQ | chisq.test() |
+| ANOVA | PROC GLM, PROC ANOVA | aov(), lm() |
+| Linear regression | PROC REG, PROC GLM | lm() |
+| Logistic regression | PROC LOGISTIC | glm() with family = binomial |
+| Survival analysis | PROC LIFETEST, PROC PHREG | survfit(), coxph() |
+
+Key differences:
+1. **Output format**: SAS produces formatted tables, while R returns objects that can be further manipulated.
+2. **Interactivity**: R allows for more interactive exploration of results.
+3. **Visualization**: R makes it easier to create customized visualizations of results.
+4. **Model objects**: In R, model results are stored as objects that can be examined, extracted, and used in further analyses.
+5. **Default output**: SAS often provides more comprehensive output by default, while R requires explicit requests for specific information.
+
+# Exercises
+
+## Exercise 1: t-test and Visualization
+
+Use the `t.test()` function on the `BP_Change` variable comparing "Drug A" and "Drug B" treatment groups. Interpret the output: what is the p-value and confidence interval? Is the difference statistically significant? Create a boxplot to visualize the difference.
+
+```{r}
+# Your code here
+```
+
+*Your interpretation here*
+
+## Exercise 2: ANOVA and Linear Regression
+
+Perform a one-way ANOVA to compare `Cholesterol` across the three treatment groups. Check the ANOVA table and note the F-statistic and p-value. Then perform a linear regression with `Cholesterol` as the outcome and `Age`, `Sex`, and `Treatment` as predictors. Identify the coefficients and their p-values, and write a short interpretation.
+
+```{r}
+# Your code here
+```
+
+*Your interpretation here*
+
+## Exercise 3: Logistic Regression
+
+Fit a logistic regression model with `Outcome` as the dependent variable and `Treatment`, `Age`, and `Baseline_BP` as predictors. Show the summary and compute odds ratios. Determine if treatment group has a significant effect on the odds of success.
+
+```{r}
+# Your code here
+```
+
+*Your interpretation here*
+
+# Conclusion
+
+In this lesson, you've learned how to perform statistical analysis in R, from basic descriptive statistics to more complex modeling techniques like linear regression, logistic regression, and survival analysis. You've seen how these approaches compare to similar procedures in SAS, and how to interpret the results.
+
+Key takeaways:
+- R provides functions for all common statistical analyses that you might perform in SAS
+- The formula interface (outcome ~ predictors) is used consistently across different types of models
+- Model results in R are stored as objects that can be examined and manipulated
+- R makes it easy to visualize data and model results
+- The statistical concepts and interpretations are the same, even though the syntax differs
+
+In the next lesson, we'll explore advanced topics including mixed models, Bayesian analysis, high-performance computing, and creating interactive applications with Shiny.
+
+# Session Information
+
+```{r}
+sessionInfo()
+``` 

@@ -1,0 +1,505 @@
+---
+title: "Lesson 4: Data Wrangling with the Tidyverse – Transforming and Combining Data"
+author: "Your Name"
+date: "`r Sys.Date()`"
+output: 
+  html_document:
+    toc: true
+    toc_float: true
+    theme: united
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+# Install required packages if not already installed
+if (!requireNamespace("tidyverse", quietly = TRUE)) install.packages("tidyverse")
+
+# Load the packages
+library(tidyverse)  # Loads dplyr, tidyr, and other tidyverse packages
+```
+
+# Introduction
+
+Welcome to Lesson 4 of our curriculum for SAS users learning R! In this lesson, we'll explore data wrangling using the tidyverse, a collection of R packages designed for data manipulation and analysis. As a SAS user, you're familiar with DATA steps and PROC SQL for data transformation. The tidyverse provides a similar but more streamlined approach in R.
+
+## Learning Objectives
+
+By the end of this lesson, you will be able to:
+
+1. Understand the tidyverse approach to data manipulation
+2. Filter, sort, and select data using dplyr functions
+3. Create and transform variables with mutate()
+4. Group and summarize data
+5. Combine datasets using various join functions
+6. Reshape data between wide and long formats
+7. Recognize the parallels between SAS operations and tidyverse functions
+
+# The Tidyverse Approach
+
+The tidyverse is a collection of R packages that share a common philosophy and are designed to work together seamlessly. The core packages for data manipulation are:
+
+- **dplyr**: For data manipulation (filtering, selecting, etc.)
+- **tidyr**: For reshaping data (wide to long, etc.)
+- **purrr**: For functional programming
+- **readr**: For data import (which we covered in Lesson 3)
+
+One of the key features of the tidyverse is the pipe operator (`%>%`), which allows you to chain operations together in a readable way. This is conceptually similar to how you might sequence DATA steps or PROC SQL queries in SAS, but with a more concise syntax.
+
+## The Pipe Operator (`%>%`)
+
+The pipe operator takes the output from one function and passes it as the first argument to the next function. This allows you to write code that reads from left to right, top to bottom, rather than from the inside out.
+
+```{r}
+# Create a sample dataset
+patient_data <- data.frame(
+  ID = 1:10,
+  Age = c(45, 52, 34, 60, 41, 55, 48, 62, 39, 57),
+  Sex = c("F", "M", "F", "M", "F", "F", "M", "F", "M", "F"),
+  Treatment = c("A", "A", "B", "B", "A", "B", "A", "B", "A", "B"),
+  BP = c(120, 135, 118, 142, 125, 130, 128, 145, 122, 138)
+)
+
+# Without pipe: Find mean BP for females on Treatment B
+mean(patient_data$BP[patient_data$Sex == "F" & patient_data$Treatment == "B"])
+
+# With pipe: Same operation
+patient_data %>%
+  filter(Sex == "F" & Treatment == "B") %>%
+  summarize(mean_bp = mean(BP))
+```
+
+The piped version is more readable and follows a logical sequence: take the data, filter it, then summarize it.
+
+## Comparing SAS and R Approaches
+
+Let's compare how you might perform a simple task in SAS versus the tidyverse:
+
+**Task**: Select female patients with BP > 130 and compute their average age.
+
+**SAS Approach**:
+```
+/* Using DATA step and PROC MEANS */
+DATA females_high_bp;
+  SET patient_data;
+  WHERE Sex = 'F' AND BP > 130;
+RUN;
+
+PROC MEANS DATA=females_high_bp MEAN;
+  VAR Age;
+RUN;
+
+/* Or using PROC SQL */
+PROC SQL;
+  SELECT AVG(Age) AS mean_age
+  FROM patient_data
+  WHERE Sex = 'F' AND BP > 130;
+QUIT;
+```
+
+**R Tidyverse Approach**:
+```{r}
+patient_data %>%
+  filter(Sex == "F" & BP > 130) %>%
+  summarize(mean_age = mean(Age))
+```
+
+The tidyverse approach is concise and reads like a sequence of operations: take the data, filter it, then summarize it.
+
+# Filtering, Sorting, and Selecting
+
+## Filtering Rows with `filter()`
+
+The `filter()` function in dplyr is similar to the WHERE statement in SAS. It allows you to subset rows based on conditions.
+
+```{r}
+# Filter for patients over 50 years old
+patient_data %>%
+  filter(Age > 50)
+
+# Multiple conditions (AND)
+patient_data %>%
+  filter(Age > 50 & Sex == "F")
+
+# Multiple conditions (OR)
+patient_data %>%
+  filter(Age > 50 | BP > 130)
+```
+
+## Sorting with `arrange()`
+
+The `arrange()` function is similar to PROC SORT in SAS. It sorts the data based on one or more variables.
+
+```{r}
+# Sort by Age (ascending)
+patient_data %>%
+  arrange(Age)
+
+# Sort by Age (descending)
+patient_data %>%
+  arrange(desc(Age))
+
+# Sort by multiple variables
+patient_data %>%
+  arrange(Treatment, desc(BP))
+```
+
+## Selecting Columns with `select()`
+
+The `select()` function allows you to choose which columns to keep, similar to the KEEP statement in a SAS DATA step or selecting specific columns in PROC SQL.
+
+```{r}
+# Select specific columns
+patient_data %>%
+  select(ID, Age, BP)
+
+# Select all columns except certain ones
+patient_data %>%
+  select(-Treatment)
+
+# Rename columns while selecting
+patient_data %>%
+  select(PatientID = ID, Age, BloodPressure = BP)
+```
+
+## Combining Operations
+
+These operations can be combined using the pipe operator to create a more complex data manipulation workflow:
+
+```{r}
+# Filter, sort, and select in one pipeline
+patient_data %>%
+  filter(Age > 45) %>%
+  arrange(desc(BP)) %>%
+  select(ID, Age, BP)
+```
+
+# Creating New Variables with `mutate()`
+
+The `mutate()` function allows you to create new variables or modify existing ones, similar to assignment statements in a SAS DATA step.
+
+```{r}
+# Create a new variable
+patient_data %>%
+  mutate(BP_Category = ifelse(BP >= 130, "High", "Normal"))
+
+# Create multiple variables
+patient_data %>%
+  mutate(
+    BP_Category = ifelse(BP >= 130, "High", "Normal"),
+    Age_Group = case_when(
+      Age < 40 ~ "Young",
+      Age < 60 ~ "Middle",
+      TRUE ~ "Senior"
+    )
+  )
+
+# Modify an existing variable
+patient_data %>%
+  mutate(Age = Age + 1)  # Increment age by 1
+```
+
+## Using `case_when()` for Complex Recoding
+
+The `case_when()` function is similar to a series of IF-THEN-ELSE statements in SAS. It's useful for creating categorical variables based on multiple conditions.
+
+```{r}
+# Create a BMI category variable
+patient_data %>%
+  mutate(
+    # Let's assume we have height and weight
+    Height = c(1.75, 1.80, 1.65, 1.90, 1.70, 1.65, 1.85, 1.60, 1.75, 1.68),
+    Weight = c(70, 90, 55, 95, 65, 60, 85, 55, 80, 62),
+    BMI = Weight / (Height^2),
+    BMI_Category = case_when(
+      BMI < 18.5 ~ "Underweight",
+      BMI < 25 ~ "Normal",
+      BMI < 30 ~ "Overweight",
+      TRUE ~ "Obese"
+    )
+  ) %>%
+  select(ID, Height, Weight, BMI, BMI_Category)
+```
+
+# Grouping and Summarizing Data
+
+## Grouping with `group_by()`
+
+The `group_by()` function is similar to the BY statement in SAS procedures or the GROUP BY clause in PROC SQL. It divides the data into groups based on one or more variables.
+
+```{r}
+# Group by Treatment
+patient_data %>%
+  group_by(Treatment)
+```
+
+Grouping alone doesn't change the data, but it changes how subsequent operations are applied.
+
+## Summarizing with `summarize()`
+
+The `summarize()` function (or `summarise()` - both spellings work) is similar to PROC MEANS or PROC SUMMARY in SAS. It calculates summary statistics for each group.
+
+```{r}
+# Calculate mean BP by Treatment
+patient_data %>%
+  group_by(Treatment) %>%
+  summarize(
+    mean_bp = mean(BP),
+    sd_bp = sd(BP),
+    count = n()
+  )
+
+# Multiple grouping variables
+patient_data %>%
+  group_by(Treatment, Sex) %>%
+  summarize(
+    mean_bp = mean(BP),
+    count = n()
+  )
+```
+
+## Handling Missing Values
+
+In R, missing values are represented by `NA`. By default, many functions will return `NA` if there are any missing values in the input. You can use the `na.rm = TRUE` argument to remove missing values before calculation, similar to how SAS handles missing values.
+
+```{r}
+# Create data with missing values
+data_with_na <- patient_data
+data_with_na$BP[c(3, 7)] <- NA
+
+# Calculate mean with and without handling NAs
+data_with_na %>%
+  group_by(Treatment) %>%
+  summarize(
+    mean_bp_with_na = mean(BP),
+    mean_bp_without_na = mean(BP, na.rm = TRUE),
+    count = n()
+  )
+```
+
+# Joins (Merging Data)
+
+Joining datasets in dplyr is similar to merging datasets in SAS using MERGE or PROC SQL joins. The dplyr package provides several join functions:
+
+- `inner_join()`: Keep only matching rows (like PROC SQL INNER JOIN)
+- `left_join()`: Keep all rows from the left dataset (like PROC SQL LEFT JOIN)
+- `right_join()`: Keep all rows from the right dataset (like PROC SQL RIGHT JOIN)
+- `full_join()`: Keep all rows from both datasets (like PROC SQL FULL JOIN)
+- `anti_join()`: Keep rows from the left dataset that don't match the right dataset
+- `semi_join()`: Filter the left dataset to include only rows that match the right dataset
+
+Let's create two datasets to demonstrate joins:
+
+```{r}
+# Demographics data
+demographics <- data.frame(
+  ID = 1:12,
+  Age = c(45, 52, 34, 60, 41, 55, 48, 62, 39, 57, 36, 44),
+  Sex = c("F", "M", "F", "M", "F", "F", "M", "F", "M", "F", "M", "F")
+)
+
+# Lab results data
+labs <- data.frame(
+  ID = c(1, 2, 3, 5, 7, 8, 10, 11, 13, 14),
+  Cholesterol = c(180, 210, 190, 175, 220, 205, 195, 230, 200, 185),
+  Glucose = c(95, 110, 105, 90, 115, 100, 95, 120, 105, 95)
+)
+```
+
+## Inner Join
+
+An inner join keeps only the rows that match in both datasets:
+
+```{r}
+# Inner join
+demographics %>%
+  inner_join(labs, by = "ID")
+```
+
+## Left Join
+
+A left join keeps all rows from the left dataset and matching rows from the right dataset:
+
+```{r}
+# Left join
+demographics %>%
+  left_join(labs, by = "ID")
+```
+
+## Right Join
+
+A right join keeps all rows from the right dataset and matching rows from the left dataset:
+
+```{r}
+# Right join
+demographics %>%
+  right_join(labs, by = "ID")
+```
+
+## Full Join
+
+A full join keeps all rows from both datasets:
+
+```{r}
+# Full join
+demographics %>%
+  full_join(labs, by = "ID")
+```
+
+## Anti Join
+
+An anti join keeps rows from the left dataset that don't match the right dataset:
+
+```{r}
+# Anti join
+demographics %>%
+  anti_join(labs, by = "ID")
+```
+
+## Joining on Different Column Names
+
+If the key columns have different names in the two datasets, you can specify the mapping:
+
+```{r}
+# Create datasets with different key column names
+demographics2 <- demographics
+names(demographics2)[1] <- "PatientID"
+
+# Join with different key column names
+demographics2 %>%
+  inner_join(labs, by = c("PatientID" = "ID"))
+```
+
+# Reshaping Data
+
+Reshaping data between wide and long formats is a common task in data analysis. In SAS, you might use PROC TRANSPOSE for this. In the tidyverse, the tidyr package provides functions for reshaping data.
+
+## Wide to Long with `pivot_longer()`
+
+The `pivot_longer()` function converts data from wide to long format, similar to PROC TRANSPOSE in SAS.
+
+```{r}
+# Create a wide dataset
+wide_data <- data.frame(
+  ID = 1:5,
+  BP_Baseline = c(120, 135, 118, 142, 125),
+  BP_Month1 = c(118, 132, 115, 138, 122),
+  BP_Month3 = c(115, 130, 112, 135, 120),
+  BP_Month6 = c(112, 128, 110, 132, 118)
+)
+
+# Convert to long format
+long_data <- wide_data %>%
+  pivot_longer(
+    cols = starts_with("BP_"),
+    names_to = "Visit",
+    values_to = "BP"
+  )
+
+long_data
+```
+
+## Long to Wide with `pivot_wider()`
+
+The `pivot_wider()` function converts data from long to wide format, also similar to PROC TRANSPOSE in SAS but in the opposite direction.
+
+```{r}
+# Convert back to wide format
+long_data %>%
+  pivot_wider(
+    names_from = Visit,
+    values_from = BP
+  )
+```
+
+## Cleaning Up Visit Names
+
+We can clean up the Visit names by extracting just the time point:
+
+```{r}
+# Clean up Visit names
+long_data %>%
+  mutate(Visit = str_replace(Visit, "BP_", "")) %>%
+  head()
+```
+
+# SAS vs R: Data Wrangling Comparison
+
+Let's summarize the key differences and similarities between SAS and R (tidyverse) for data wrangling:
+
+| Operation | SAS | R (Tidyverse) |
+|-----------|-----|---------------|
+| Filtering rows | WHERE statement | `filter()` |
+| Sorting | PROC SORT | `arrange()` |
+| Selecting columns | KEEP/DROP statements | `select()` |
+| Creating variables | Assignment statements | `mutate()` |
+| Conditional logic | IF-THEN-ELSE | `ifelse()`, `case_when()` |
+| Grouping | BY statement | `group_by()` |
+| Summarizing | PROC MEANS, PROC SUMMARY | `summarize()` |
+| Joining data | MERGE, PROC SQL JOIN | `inner_join()`, `left_join()`, etc. |
+| Reshaping data | PROC TRANSPOSE | `pivot_longer()`, `pivot_wider()` |
+
+Key differences to note:
+
+1. **Workflow**: SAS typically uses separate steps (DATA steps, PROCs), while R uses a pipeline approach with the pipe operator (`%>%`).
+
+2. **In-memory vs. Disk**: R operations are performed in memory and results are immediately available, whereas SAS often writes intermediate datasets to disk.
+
+3. **Explicit vs. Implicit**: In R, you must explicitly assign results to save them, while SAS automatically creates new datasets in many operations.
+
+4. **Vectorized Operations**: R naturally works with vectors and applies functions to entire columns at once, whereas SAS's DATA step processes one row at a time.
+
+5. **Missing Values**: R uses `NA` for missing values and requires explicit handling in many functions (`na.rm = TRUE`), while SAS uses `.` for numeric missing values and handles them automatically in many procedures.
+
+# Exercises
+
+## Exercise 1: Filtering and Selecting
+
+Take the `patient_data` data frame from this lesson (or create a new one with similar structure). Using dplyr, filter the data to females over 50 and select only ID, Age, and BP columns. Arrange the result by BP descending. Write this as a single pipeline using `%>%`.
+
+```{r}
+# Your code here
+```
+
+How many records meet the criteria?
+
+## Exercise 2: Creating Variables and Summarizing
+
+Extend the previous pipeline: after arranging, use `mutate()` to create a new column `AgeGroup` that labels patients as "50-60" or ">60" (based on Age). Then group by Treatment and AgeGroup and summarize the average BP in each subgroup. Write the final summarized table to a new data frame and inspect it.
+
+```{r}
+# Your code here
+```
+
+## Exercise 3: Joining and Reshaping
+
+You have two datasets: `demographics` (with ID, Sex, Race) and `labs` (with ID, Cholesterol, BloodSugar) from this lesson. Perform a `left_join(demographics, labs, by="ID")` to combine them into one data frame.
+
+```{r}
+# Your code here
+```
+
+How many rows does the merged data have, and are there any IDs in `demographics` that had no lab data (check for NAs in lab fields)?
+
+Now, let's practice reshaping. Using the `wide_data` data frame (with BP measurements at different time points), pivot the data longer so that there is one row per patient per time point (with a "Visit" column and a "BP" column). Clean up the Visit names to remove the "BP_" prefix.
+
+```{r}
+# Your code here
+```
+
+# Conclusion
+
+In this lesson, you've learned how to use the tidyverse for data wrangling in R. You've seen how to filter, sort, and select data; create and transform variables; group and summarize data; combine datasets using joins; and reshape data between wide and long formats.
+
+Key takeaways:
+- The tidyverse provides a consistent and intuitive approach to data manipulation
+- The pipe operator (`%>%`) allows you to chain operations together in a readable way
+- Many SAS operations have direct counterparts in the tidyverse
+- The tidyverse encourages a more functional and vectorized approach to data manipulation
+
+In the next lesson, we'll explore exploratory data analysis (EDA) in R, including summarization and visualization techniques.
+
+# Session Information
+
+```{r}
+sessionInfo()
+``` 
