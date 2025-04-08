@@ -1,6 +1,6 @@
 ---
 title: "Lesson 6: Writing Custom Functions and Control Structures in R"
-author: "Your Name"
+author: "For SAS Users Learning R"
 date: "`r Sys.Date()`"
 output: 
   html_document:
@@ -52,6 +52,8 @@ calc_bmi <- function(weight_kg, height_m) {
 # Test the function
 calc_bmi(70, 1.75)
 ```
+> **Define and Test!** Run the code chunk above. First, R defines the `calc_bmi` function object. Then, the line `calc_bmi(70, 1.75)` calls the function with specific inputs and prints the result.
+
 
 The structure of an R function is:
 1. Name assignment using `<-`
@@ -85,6 +87,8 @@ calc_bmi_improved(70, 1.75)
 # Test with custom rounding
 calc_bmi_improved(70, 1.75, round_digits = 1)
 ```
+> **Improved Function:** Run this chunk. Notice how we added a default value for `round_digits`. Try calling it with and without specifying `round_digits`.
+
 
 The comments starting with `#'` are special Roxygen2 comments that can be used to generate documentation for packages. Even if you're not creating a package, this style of documentation is helpful for understanding what the function does.
 
@@ -111,6 +115,8 @@ calc_bmi <- function(weight_kg, height_m) {
 
 cat("BMI:", calc_bmi(70, 1.75), "\n")
 ```
+> **R vs SAS:** Run the R function chunk. Compare the syntax and output to the SAS macro example above it. R functions directly compute and return values.
+
 
 Key differences:
 1. SAS macros use `%` symbols and macro variables with `&`
@@ -132,6 +138,8 @@ patients <- data.frame(
 
 # Apply the function to calculate BMI for each patient
 patients$BMI <- calc_bmi(patients$Weight_kg, patients$Height_m)
+> **Vector Power!** Run this chunk (it creates the `patients` data frame first). Notice how `calc_bmi(patients$Weight_kg, patients$Height_m)` works even though the inputs are vectors, not single numbers? R automatically applies the calculation element-wise. The result is assigned to the new `BMI` column.
+
 
 # View the result
 patients
@@ -151,6 +159,8 @@ patients %>%
            BMI < 18.5 ~ "Underweight",
            BMI < 25 ~ "Normal",
            BMI < 30 ~ "Overweight",
+> **dplyr Integration:** Run this chunk. You can seamlessly use your custom functions like `calc_bmi` inside `dplyr` verbs like `mutate`. This makes your data wrangling pipelines even more powerful!
+
            TRUE ~ "Obese"
          ))
 ```
@@ -172,6 +182,8 @@ categorize_bmi <- function(bmi) {
     return("Overweight")
   } else {
     return("Obese")
+> **Conditional Logic:** Run this chunk. Define the `categorize_bmi` function, then test it with different inputs to see the `if/else if/else` logic work.
+
   }
 }
 
@@ -197,6 +209,8 @@ categorize_bmi_vec <- function(bmi) {
 
 # Test on a vector
 bmi_values <- c(17.5, 22.0, 26.5, 31.0)
+> **Vectorized Conditionals:** Run this chunk. The first function (`categorize_bmi`) only works on single values. The second (`categorize_bmi_vec`) uses `case_when` and works on the entire `bmi_values` vector at once. See how it's applied to the `patients` data frame?
+
 categorize_bmi_vec(bmi_values)
 
 # Apply to our dataset
@@ -213,6 +227,8 @@ In SAS, looping is implicit in DATA steps (which process one observation at a ti
 for (i in 1:5) {
   cat("Patient", i, "has BMI:", patients$BMI[i], "\n")
 }
+
+> **Loops:** Run this chunk. Observe how the `for` loop iterates through numbers 1 to 5, and the `while` loop continues as long as `i <= 3`. The `cat()` function prints the output for each iteration.
 
 # While loop example
 i <- 1
@@ -235,6 +251,8 @@ large_patients <- data.frame(
   Height_m = rnorm(1000, mean = 1.7, sd = 0.1)
 )
 
+> **Speed Test!** Run this chunk (it creates a larger dataset first). Compare the `system.time` output for the loop versus the vectorized approach. The difference is usually dramatic, highlighting why vectorization is preferred in R!
+
 # Using a loop (slower)
 system.time({
   bmi_loop <- numeric(1000)
@@ -252,6 +270,8 @@ system.time({
 As you can see, vectorized operations are much faster in R. This is different from SAS, where loops are often the primary way to process data.
 
 # Apply Functions and Functional Programming
+
+> **Apply to Lists:** Run this chunk. `lapply` applies `mean` to each list element and returns a list. `sapply` does the same but tries to simplify the result into a vector.
 
 R has a family of "apply" functions that apply a function to elements of an object. These are similar to BY-group processing in SAS but more flexible:
 
@@ -275,6 +295,8 @@ sapply(weight_lists, mean)  # Returns a vector or matrix
 # Create a matrix of measurements
 measurements <- matrix(c(
   # Weight, Height for 5 patients
+> **Apply to Matrices:** Run this chunk. `apply` with `MARGIN = 2` applies the function (`mean`) to each column. With `MARGIN = 1`, it applies the custom BMI calculation function to each row.
+
   70, 1.75,
   65, 1.60,
   80, 1.80,
@@ -292,6 +314,8 @@ apply(measurements, 1, function(x) x[1] / (x[2]^2))  # Calculate BMI for each ro
 ```
 
 ## Using purrr for more complex operations
+> **Purrr Power:** Run this chunk. `map_dbl` is like `sapply` but guarantees a numeric vector output. `map2_dbl` applies a function (`~ .x / (.y^2)`) using corresponding elements from two input vectors.
+
 
 The purrr package (part of tidyverse) provides more consistent and powerful functional programming tools:
 
@@ -335,6 +359,8 @@ summarize_by_group <- function(data, group_var, outcome_var) {
   
   return(result)
 }
+> **Real-world Function:** Run this chunk (it defines the function and creates sample data). This `summarize_by_group` function is quite useful! Test it by summarizing BP by Treatment and Age by Sex. Notice how it uses `sym()` and `!!` (bang-bang) to handle variable names passed as strings – this is a common pattern when writing functions that work with `dplyr`.
+
 
 # Create a sample clinical dataset
 set.seed(123)
@@ -360,6 +386,8 @@ This function is much more powerful than a SAS macro because:
 
 In SAS, you might use `%put` statements or the log to debug macros. In R, you have several options:
 
+> **Error Handling:** Run this chunk. The `safe_calc_bmi` function includes checks using `if` and `stop()`. The `try()` function allows the code to continue even if an error occurs, printing the error message.
+
 ## Basic Error Handling
 
 ```{r, error=TRUE}
@@ -377,6 +405,8 @@ safe_calc_bmi <- function(weight_kg, height_m) {
   # Calculate BMI
   bmi <- weight_kg / (height_m^2)
   return(bmi)
+> **Print Debugging:** Run this chunk. Adding `print()` statements inside your function is a simple way to see the values of variables at different stages.
+
 }
 
 # Test with invalid inputs
@@ -435,7 +465,7 @@ For SAS users, the key mindset shift is understanding that:
 
 ## Exercise 1: Creating a BMI Function
 
-Write a custom function `calc_bmi(weight_kg, height_m)` that calculates body mass index (BMI = weight (kg) / height (m)^2) and returns the BMI value. Test your function on a few sample inputs. Then use your function within a `mutate()` call to add a BMI column to a patient data frame (with weight and height columns).
+Write a custom function `calc_bmi(weight_kg, height_m)` that calculates body mass index (BMI = weight (kg) / height (m)^2) and returns the BMI value. Test your function on a few sample inputs. Then use your function within a `mutate()` call to add a BMI column to a patient data frame (with weight and height columns). **Type your code in the chunk below and run it.**
 
 ```{r}
 # Your code here
@@ -443,7 +473,7 @@ Write a custom function `calc_bmi(weight_kg, height_m)` that calculates body mas
 
 ## Exercise 2: Group Summary Function
 
-Create a function `summarize_by_group(data, group_var, outcome_var)` that takes a data frame and two column names (group and outcome) and returns a data frame with count, mean, and standard deviation of the outcome for each group. Test this function on a dataset (e.g., summarize blood pressure by treatment group).
+Create a function `summarize_by_group(data, group_var, outcome_var)` that takes a data frame and two column names (group and outcome) and returns a data frame with count, mean, and standard deviation of the outcome for each group. Test this function on a dataset (e.g., summarize blood pressure by treatment group). **Type your code in the chunk below and run it.**
 
 ```{r}
 # Your code here
@@ -451,7 +481,7 @@ Create a function `summarize_by_group(data, group_var, outcome_var)` that takes 
 
 ## Exercise 3: Loops and Conditionals
 
-Write a loop that goes through numbers 1 to 10, and prints whether each number is even or odd. Then, consider how you might achieve the same result without an explicit loop (hint: R can do `ifelse()` on a vector directly).
+Write a loop that goes through numbers 1 to 10, and prints whether each number is even or odd. Then, consider how you might achieve the same result without an explicit loop (hint: R can do `ifelse()` on a vector directly). **Type your code in the chunk below and run it.**
 
 ```{r}
 # Your code here

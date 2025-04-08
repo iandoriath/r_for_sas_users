@@ -1,6 +1,6 @@
 ---
 title: "Lesson 3: Data Import and Export – Reading and Writing Data (CSV, Excel, SAS)"
-author: "Your Name"
+author: "For SAS Users Learning R"
 date: "`r Sys.Date()`"
 output: 
   html_document:
@@ -58,6 +58,8 @@ CSV (Comma-Separated Values) files are one of the most common data formats. In S
 
 ## Using read_csv()
 
+> **Heads up!** The next code chunk *creates* a sample CSV file named `blood_pressure.csv` in your current working directory. Run this chunk first so that the file exists when we try to import it in the chunk *after* this one.
+
 ```{r}
 # Create a sample CSV file to work with
 write.csv(
@@ -114,12 +116,16 @@ RStudio also provides a graphical interface for importing data, similar to SAS E
 3. Browse to your file
 4. Adjust import options as needed
 5. Click "Import"
+> **Give it a try!** Feel free to pause here and try clicking through the 'Import Dataset' steps yourself. It's a handy tool, especially when you're starting out. Just remember to copy the code it generates if you want your import process to be reproducible!
+
 
 The tool will also show you the equivalent R code, which you can copy into your script for reproducibility.
 
 # Reading Excel Files
 
 Excel files are common in biomedical research. In SAS, you might use PROC IMPORT with the EXCEL engine or SAS/ACCESS. In R, we use the `readxl` package.
+
+> **Sample File Creation:** Similar to the CSV example, this next chunk creates a sample Excel file named `lab_results.xlsx`. Run this chunk to create the file before running the `read_excel` chunk that follows.
 
 ```{r}
 # Create a sample Excel file
@@ -167,6 +173,11 @@ For SAS users, being able to read SAS datasets directly is crucial. The `haven` 
 ```{r, eval=FALSE}
 # This code is provided as an example but won't run unless you have a SAS dataset
 # Replace "your_sas_data.sas7bdat" with an actual SAS dataset path if available
+> **Note on `eval=FALSE`:** This chunk is set to `eval=FALSE` because we can't assume you have a SAS dataset readily available. If you *do* have a `.sas7bdat` file, you can:
+> 1. Uncomment the lines below (remove the `#` at the beginning).
+> 2. Replace `"your_sas_data.sas7bdat"` with the actual path to your file.
+> 3. Run the code line-by-line using `Ctrl+Enter` (or `Cmd+Enter` on Mac).
+
 
 # Import a SAS dataset
 # clinical_data <- read_sas("your_sas_data.sas7bdat")
@@ -183,6 +194,8 @@ One advantage of `haven` is that it preserves SAS metadata like variable labels 
 # Example of accessing SAS metadata (won't run without a SAS dataset)
 # Get variable labels
 # sapply(clinical_data, attr, "label")
+
+> **Note on `eval=FALSE` (Metadata):** Similarly, this chunk won't run automatically. If you successfully loaded a SAS dataset in the previous chunk, you can uncomment these lines and run them line-by-line (`Ctrl+Enter` or `Cmd+Enter`) to explore the imported SAS labels and formats.
 
 # Check for SAS formats
 # sapply(clinical_data, attr, "format.sas")
@@ -313,7 +326,7 @@ This is somewhat similar to SAS permanent datasets, but the approach is differen
 
 ## Exercise 1: Importing CSV Data
 
-Using `read_csv()`, import the "blood_pressure.csv" file we created earlier. Check the first few rows with `head()` and the structure with `str()`. In a text response, note how the data types were interpreted (e.g., are treatments read as character or factor?).
+Using `read_csv()`, import the "blood_pressure.csv" file we created earlier. Check the first few rows with `head()` and the structure with `str()`. **Type your code in the chunk below and run it.** In a text response, note how the data types were interpreted (e.g., are treatments read as character or factor?).
 
 ```{r}
 # Your code here
@@ -323,7 +336,7 @@ Using `read_csv()`, import the "blood_pressure.csv" file we created earlier. Che
 
 ## Exercise 2: Importing Excel Data
 
-Import the "lab_results.xlsx" file using `read_excel()`. Verify that the data has been read correctly by summarizing a few columns (e.g., use `summary()` or `table()` on a column).
+Import the "lab_results.xlsx" file using `read_excel()`. Verify that the data has been read correctly by summarizing a few columns (e.g., use `summary()` or `table()` on a column). **Type your code in the chunk below and run it.**
 
 ```{r}
 # Your code here
@@ -331,7 +344,7 @@ Import the "lab_results.xlsx" file using `read_excel()`. Verify that the data ha
 
 ## Exercise 3: Working with Labeled Data and Exporting
 
-Take the `clinical_data` data frame we created (with labels and value labels) and export it as a CSV file. Then, import it back and check if the labels were preserved. What happened to the labels? How might you preserve this metadata when moving data between R sessions?
+Take the `clinical_data` data frame we created (with labels and value labels) and export it as a CSV file. Then, import it back and check if the labels were preserved. **Type your code in the chunk below and run it.** What happened to the labels? How might you preserve this metadata when moving data between R sessions?
 
 ```{r}
 # Your code here

@@ -1,6 +1,6 @@
 ---
 title: "Lesson 8: Advanced Topics – Mixed Models, Bayesian Analysis, High-Performance Computing, and Shiny"
-author: "Your Name"
+author: "For SAS Users Learning R"
 date: "`r Sys.Date()`"
 output: 
   html_document:
@@ -90,6 +90,8 @@ longitudinal_data$BP <- 140 +                                # Baseline value
 # View the first few rows
 head(longitudinal_data)
 ```
+> **Longitudinal Data:** Run this chunk to create the sample `longitudinal_data`.
+
 
 ## Visualizing Longitudinal Data
 
@@ -125,6 +127,8 @@ ggplot(longitudinal_data, aes(x = Time, y = BP, group = Subject, color = Treatme
        y = "Blood Pressure (mmHg)") +
   theme_minimal()
 ```
+> **Visualize Trends:** Run these `ggplot` chunks. The first shows the average trend per group, while the second overlays individual subject trajectories. This helps visualize the within-subject correlation that mixed models handle.
+
 
 ## Fitting a Mixed-Effects Model
 
@@ -137,6 +141,8 @@ mixed_model <- lmer(BP ~ Time * Treatment + (1 | Subject), data = longitudinal_d
 # View the model summary
 summary(mixed_model)
 ```
+> **Fit the Mixed Model:** Run this chunk. `lmer()` fits the model. Examine the `summary()` output, paying attention to the fixed effects (Time, Treatment) and the random effect variance for Subject.
+
 
 The model formula `BP ~ Time * Treatment + (1 | Subject)` specifies:
 - Fixed effects: Time, Treatment, and their interaction
@@ -176,6 +182,8 @@ AIC(simple_model)
 ```
 
 The mixed model typically provides a better fit because it accounts for the correlation between measurements from the same subject.
+> **Model Comparison:** Run this chunk. Fit the simple `lm()` and compare its AIC to the `mixed_model`'s AIC. A lower AIC suggests a better fit, highlighting the benefit of the mixed model here.
+
 
 # Bayesian Analysis
 
@@ -204,6 +212,8 @@ if (requireNamespace("rstanarm", quietly = TRUE)) {
                           prior = normal(0, 10),
                           prior_intercept = normal(140, 20),
                           chains = 2, iter = 1000)
+> **Bayesian Model (Optional):** This chunk will only run if you have the `rstanarm` package installed. If it runs, it fits a Bayesian version of the linear model using MCMC. Examine the `summary()` output (which shows posterior means, medians, and credible intervals) and the `plot()` output (which shows the shape of the posterior distributions).
+
   
   # View the model summary
   print(summary(bayes_model))
@@ -262,6 +272,8 @@ large_dt <- data.table(large_df)
 # Compare performance for a simple aggregation
 system.time({
   # dplyr approach
+> **data.table Speed:** Run this chunk (it creates a large data frame first). Compare the `system.time` outputs for the `dplyr` approach versus the `data.table` approach. `data.table` is often significantly faster for large datasets, though its syntax is different.
+
   result_dplyr <- large_df %>%
     group_by(group) %>%
     summarize(mean_value = mean(value))
@@ -300,6 +312,8 @@ system.time({
 
 if (.Platform$OS.type != "windows") {
   system.time({
+> **Parallel Processing:** Run this chunk. It first checks your available cores. Then it compares the time for a simple sequential `lapply` loop versus a parallel `mclapply` (on Mac/Linux). If the parallel version runs, you should see a speedup, especially if the task inside the loop takes longer.
+
     # Parallel processing
     result_par <- parallel::mclapply(1:10, function(x) {
       Sys.sleep(0.1)  # Simulate work
@@ -390,6 +404,8 @@ server <- function(input, output) {
 }
 
 # Run the application
+> **Try Shiny!** This code chunk has `eval=FALSE` because Shiny apps need to run interactively. To see the example, copy the line `shiny::runExample("01_hello")` and paste it directly into your R Console (usually bottom-left in RStudio) and press Enter. A new window or browser tab should open with a simple interactive application!
+
 shinyApp(ui = ui, server = server)
 ```
 
@@ -467,7 +483,7 @@ Key differences:
 
 ## Exercise 1: Mixed Model Practice
 
-Using the `longitudinal_data` dataset we created, try fitting a mixed-effects model with random intercepts for each subject. After fitting, use `summary()` to see the results. Compare the fixed effect of Time to what you would get if you ran a simple linear model ignoring subject (or what you might get from a repeated measures ANOVA in SAS).
+Using the `longitudinal_data` dataset we created, try fitting a mixed-effects model with random intercepts for each subject. **Type your code in the chunk below and run it.** After fitting, use `summary()` to see the results. Compare the fixed effect of Time to what you would get if you ran a simple linear model ignoring subject (or what you might get from a repeated measures ANOVA in SAS).
 
 ```{r}
 # Your code here
@@ -475,13 +491,13 @@ Using the `longitudinal_data` dataset we created, try fitting a mixed-effects mo
 
 ## Exercise 2: Shiny Exploration
 
-If you have RStudio available, run one of the built-in Shiny examples using `runExample("01_hello")`. Then, outline (in markdown) an idea for a Shiny app you might create for your own data – what inputs and outputs would it have?
+If you have RStudio available, run one of the built-in Shiny examples using `runExample("01_hello")` **(remember to run this in your Console, not here)**. Then, outline (in markdown) an idea for a Shiny app you might create for your own data – what inputs and outputs would it have?
 
 *Your response here*
 
 ## Exercise 3: Performance Experiment
 
-Compare the performance of base R, dplyr, and data.table for a simple operation like calculating the mean by group. Use `system.time()` to measure the execution time.
+Compare the performance of base R, dplyr, and data.table for a simple operation like calculating the mean by group. Use `system.time()` to measure the execution time. **Type your code in the chunk below and run it.**
 
 ```{r}
 # Your code here

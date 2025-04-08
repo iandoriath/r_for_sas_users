@@ -1,6 +1,6 @@
 ---
 title: "Lesson 4: Data Wrangling with the Tidyverse – Transforming and Combining Data"
-author: "Your Name"
+author: "For SAS Users Learning R"
 date: "`r Sys.Date()`"
 output: 
   html_document:
@@ -67,6 +67,8 @@ patient_data %>%
   filter(Sex == "F" & Treatment == "B") %>%
   summarize(mean_bp = mean(BP))
 ```
+> **Run and Compare!** Execute both the non-piped code (line 63) and the piped code (lines 66-68) above. You should get the same result! Notice how the piped version flows more like a sentence describing the steps.
+
 
 The piped version is more readable and follows a logical sequence: take the data, filter it, then summarize it.
 
@@ -122,6 +124,8 @@ patient_data %>%
 
 # Multiple conditions (OR)
 patient_data %>%
+> **Your turn!** Run the `filter()` examples above. See how the output changes based on the conditions?
+
   filter(Age > 50 | BP > 130)
 ```
 
@@ -140,6 +144,8 @@ patient_data %>%
 
 # Sort by multiple variables
 patient_data %>%
+> **Try sorting!** Run the `arrange()` examples. Notice how `desc()` changes the sort order.
+
   arrange(Treatment, desc(BP))
 ```
 
@@ -158,6 +164,8 @@ patient_data %>%
 
 # Rename columns while selecting
 patient_data %>%
+> **Select away!** Run the `select()` examples. Pay attention to how you can keep, remove, or rename columns.
+
   select(PatientID = ID, Age, BloodPressure = BP)
 ```
 
@@ -170,6 +178,8 @@ These operations can be combined using the pipe operator to create a more comple
 patient_data %>%
   filter(Age > 45) %>%
   arrange(desc(BP)) %>%
+> **Putting it together!** Run this combined pipeline. See how the data flows through each step?
+
   select(ID, Age, BP)
 ```
 
@@ -187,6 +197,8 @@ patient_data %>%
   mutate(
     BP_Category = ifelse(BP >= 130, "High", "Normal"),
     Age_Group = case_when(
+> **Mutate it!** Run the `mutate()` examples. See how new columns are added or existing ones modified?
+
       Age < 40 ~ "Young",
       Age < 60 ~ "Middle",
       TRUE ~ "Senior"
@@ -210,6 +222,8 @@ patient_data %>%
     Height = c(1.75, 1.80, 1.65, 1.90, 1.70, 1.65, 1.85, 1.60, 1.75, 1.68),
     Weight = c(70, 90, 55, 95, 65, 60, 85, 55, 80, 62),
     BMI = Weight / (Height^2),
+> **Conditional logic!** Run the `case_when()` example. This is super useful for creating categories based on complex rules.
+
     BMI_Category = case_when(
       BMI < 18.5 ~ "Underweight",
       BMI < 25 ~ "Normal",
@@ -221,6 +235,8 @@ patient_data %>%
 ```
 
 # Grouping and Summarizing Data
+
+> **Group up!** Run the `group_by()` example. Notice the output says `Groups: Treatment [2]`? This tells you the data is now grouped, ready for summarizing.
 
 ## Grouping with `group_by()`
 
@@ -247,6 +263,8 @@ patient_data %>%
     sd_bp = sd(BP),
     count = n()
   )
+> **Summarize it!** Run the `summarize()` examples. See how you get one row per group with the calculated statistics?
+
 
 # Multiple grouping variables
 patient_data %>%
@@ -265,6 +283,8 @@ In R, missing values are represented by `NA`. By default, many functions will re
 # Create data with missing values
 data_with_na <- patient_data
 data_with_na$BP[c(3, 7)] <- NA
+
+> **Handling NAs!** Run this chunk. Notice the difference `na.rm = TRUE` makes when calculating the mean?
 
 # Calculate mean with and without handling NAs
 data_with_na %>%
@@ -295,6 +315,8 @@ demographics <- data.frame(
   ID = 1:12,
   Age = c(45, 52, 34, 60, 41, 55, 48, 62, 39, 57, 36, 44),
   Sex = c("F", "M", "F", "M", "F", "F", "M", "F", "M", "F", "M", "F")
+> **Inner Join:** Run this chunk. Notice only IDs present in *both* `demographics` and `labs` are kept.
+
 )
 
 # Lab results data
@@ -304,6 +326,8 @@ labs <- data.frame(
   Glucose = c(95, 110, 105, 90, 115, 100, 95, 120, 105, 95)
 )
 ```
+
+> **Left Join:** Run this chunk. See how all IDs from `demographics` are kept? IDs not in `labs` have `NA` for the lab columns.
 
 ## Inner Join
 
@@ -315,6 +339,8 @@ demographics %>%
   inner_join(labs, by = "ID")
 ```
 
+> **Right Join:** Run this chunk. Now all IDs from `labs` are kept. IDs not in `demographics` have `NA` for the demographic columns.
+
 ## Left Join
 
 A left join keeps all rows from the left dataset and matching rows from the right dataset:
@@ -325,6 +351,8 @@ demographics %>%
   left_join(labs, by = "ID")
 ```
 
+> **Full Join:** Run this chunk. All IDs from *both* datasets are included, with `NA`s where necessary.
+
 ## Right Join
 
 A right join keeps all rows from the right dataset and matching rows from the left dataset:
@@ -334,6 +362,8 @@ A right join keeps all rows from the right dataset and matching rows from the le
 demographics %>%
   right_join(labs, by = "ID")
 ```
+
+> **Anti Join:** Run this chunk. This shows you the IDs from `demographics` that *don't* have a match in `labs`.
 
 ## Full Join
 
@@ -348,6 +378,8 @@ demographics %>%
 ## Anti Join
 
 An anti join keeps rows from the left dataset that don't match the right dataset:
+
+> **Different Keys:** Run this chunk. The `by = c("PatientID" = "ID")` tells R how to match the columns even though they have different names.
 
 ```{r}
 # Anti join
@@ -366,6 +398,8 @@ names(demographics2)[1] <- "PatientID"
 
 # Join with different key column names
 demographics2 %>%
+> **Go Long!** Run the `pivot_longer` example. See how the multiple BP columns were gathered into two columns: `Visit` and `BP`?
+
   inner_join(labs, by = c("PatientID" = "ID"))
 ```
 
@@ -379,6 +413,8 @@ The `pivot_longer()` function converts data from wide to long format, similar to
 
 ```{r}
 # Create a wide dataset
+> **Go Wide!** Run the `pivot_wider` example. This reverses the previous operation, spreading the `Visit` values back out into columns.
+
 wide_data <- data.frame(
   ID = 1:5,
   BP_Baseline = c(120, 135, 118, 142, 125),
@@ -390,6 +426,8 @@ wide_data <- data.frame(
 # Convert to long format
 long_data <- wide_data %>%
   pivot_longer(
+> **Clean Up!** Run this chunk. The `str_replace` function (from the `stringr` package, also part of tidyverse) is handy for text manipulation like removing the 'BP_' prefix.
+
     cols = starts_with("BP_"),
     names_to = "Visit",
     values_to = "BP"
@@ -454,7 +492,7 @@ Key differences to note:
 
 ## Exercise 1: Filtering and Selecting
 
-Take the `patient_data` data frame from this lesson (or create a new one with similar structure). Using dplyr, filter the data to females over 50 and select only ID, Age, and BP columns. Arrange the result by BP descending. Write this as a single pipeline using `%>%`.
+Take the `patient_data` data frame from this lesson (or create a new one with similar structure). Using dplyr, filter the data to females over 50 and select only ID, Age, and BP columns. Arrange the result by BP descending. Write this as a single pipeline using `%>%`. **Type your code in the chunk below and run it.**
 
 ```{r}
 # Your code here
@@ -464,7 +502,7 @@ How many records meet the criteria?
 
 ## Exercise 2: Creating Variables and Summarizing
 
-Extend the previous pipeline: after arranging, use `mutate()` to create a new column `AgeGroup` that labels patients as "50-60" or ">60" (based on Age). Then group by Treatment and AgeGroup and summarize the average BP in each subgroup. Write the final summarized table to a new data frame and inspect it.
+Extend the previous pipeline: after arranging, use `mutate()` to create a new column `AgeGroup` that labels patients as "50-60" or ">60" (based on Age). Then group by Treatment and AgeGroup and summarize the average BP in each subgroup. Write the final summarized table to a new data frame and inspect it. **Type your code in the chunk below and run it.**
 
 ```{r}
 # Your code here
@@ -472,7 +510,7 @@ Extend the previous pipeline: after arranging, use `mutate()` to create a new co
 
 ## Exercise 3: Joining and Reshaping
 
-You have two datasets: `demographics` (with ID, Sex, Race) and `labs` (with ID, Cholesterol, BloodSugar) from this lesson. Perform a `left_join(demographics, labs, by="ID")` to combine them into one data frame.
+You have two datasets: `demographics` (with ID, Sex, Race) and `labs` (with ID, Cholesterol, BloodSugar) from this lesson. Perform a `left_join(demographics, labs, by="ID")` to combine them into one data frame. **Type your code for the join in the chunk below and run it.**
 
 ```{r}
 # Your code here
@@ -480,7 +518,7 @@ You have two datasets: `demographics` (with ID, Sex, Race) and `labs` (with ID, 
 
 How many rows does the merged data have, and are there any IDs in `demographics` that had no lab data (check for NAs in lab fields)?
 
-Now, let's practice reshaping. Using the `wide_data` data frame (with BP measurements at different time points), pivot the data longer so that there is one row per patient per time point (with a "Visit" column and a "BP" column). Clean up the Visit names to remove the "BP_" prefix.
+Now, let's practice reshaping. Using the `wide_data` data frame (with BP measurements at different time points), pivot the data longer so that there is one row per patient per time point (with a "Visit" column and a "BP" column). Clean up the Visit names to remove the "BP_" prefix. **Type your code for reshaping in the chunk below and run it.**
 
 ```{r}
 # Your code here

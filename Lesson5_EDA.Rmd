@@ -1,6 +1,6 @@
 ---
 title: "Lesson 5: Exploratory Data Analysis (EDA) – Summarization and Visualization"
-author: "Your Name"
+author: "For SAS Users Learning R"
 date: "`r Sys.Date()`"
 output: 
   html_document:
@@ -90,6 +90,8 @@ cholesterol_stats <- clinical_trial %>%
 
 cholesterol_stats
 ```
+> **Summarize it!** Run the chunks above. Compare the output of the basic `summary()` function with the more detailed statistics we calculated using `summarize()`. Notice how `na.rm = TRUE` is essential for calculations involving `Cholesterol` because it has missing values.
+
 
 ## Summarizing by Group
 
@@ -116,6 +118,8 @@ clinical_trial %>%
     sd_chol = sd(Cholesterol, na.rm = TRUE)
   )
 ```
+> **Group Summaries:** Run these chunks. See how `group_by()` allows `summarize()` to calculate statistics for each treatment group, or even combinations like Treatment and Sex?
+
 
 ## Frequency Tables
 
@@ -140,6 +144,8 @@ clinical_trial %>%
   count(Treatment, Outcome) %>%
   pivot_wider(names_from = Outcome, values_from = n, values_fill = 0)
 ```
+> **Frequencies:** Run these chunks. Compare the output of base R's `table()` and `prop.table()` with `dplyr`'s `count()` followed by `pivot_wider()`. Both achieve similar goals for creating frequency tables.
+
 
 # Handling Missing Values in EDA
 
@@ -154,6 +160,8 @@ colSums(is.na(clinical_trial))
 # Visualize missing values pattern
 clinical_trial %>%
   summarize(across(everything(), ~ sum(is.na(.)))) %>%
+> **Find the Missing!** Run the `colSums(is.na(...))` command to get a quick count of NAs per column. Then, run the `ggplot` chunk. This plot gives a nice visual overview of where the missingness is concentrated.
+
   pivot_longer(everything(), names_to = "Variable", values_to = "Missing_Count") %>%
   ggplot(aes(x = reorder(Variable, Missing_Count), y = Missing_Count)) +
   geom_bar(stat = "identity") +
@@ -168,6 +176,8 @@ Let's see how missing values affect our summary statistics:
 ```{r}
 # Mean with and without handling NAs
 mean(clinical_trial$Cholesterol)  # Returns NA if any value is NA
+> **NA Impact:** Run these lines. See how `mean()` returns `NA` by default if any input is `NA`? Using `na.rm = TRUE` is crucial. Also, check how many rows are lost if we only keep `complete.cases()`.
+
 mean(clinical_trial$Cholesterol, na.rm = TRUE)  # Removes NAs before calculation
 
 # Complete cases only
@@ -184,6 +194,8 @@ While advanced imputation methods are beyond the scope of this lesson, here's a 
 clinical_trial_imputed <- clinical_trial %>%
   mutate(Cholesterol_Imputed = ifelse(is.na(Cholesterol), 
                                      mean(Cholesterol, na.rm = TRUE), 
+> **Simple Fix:** Run this imputation example. Compare the `summary()` outputs. Notice how the mean hasn't changed (as expected with mean imputation), but the `NA's` count is now 0 for the imputed variable. (Remember, mean imputation is simple but often not the best approach!)
+
                                      Cholesterol))
 
 # Compare original and imputed
@@ -194,6 +206,8 @@ summary(clinical_trial_imputed$Cholesterol_Imputed)
 # Introduction to ggplot2
 
 In SAS, you might use PROC SGPLOT or PROC GPLOT for visualization. In R, the ggplot2 package (part of the tidyverse) is the most popular plotting system. It's based on the "Grammar of Graphics," which provides a structured approach to creating visualizations.
+
+> **Your First Plot!** Run this chunk. Your scatter plot should appear in the Plots pane in RStudio (usually bottom-right). This is the basic structure: data, aesthetics, geometry.
 
 ## Basic Structure of a ggplot
 
@@ -211,6 +225,8 @@ ggplot(clinical_trial, aes(x = Age, y = Cholesterol)) +
 This is similar to a PROC SGPLOT SCATTER statement in SAS, but the syntax is different.
 
 ## Adding Layers
+> **Layer Up!** Run this chunk. See how we added a `geom_smooth()` layer for the trend line and `labs()` to add titles and labels? ggplot builds plots layer by layer.
+
 
 One of the strengths of ggplot2 is the ability to add layers to a plot:
 
@@ -223,6 +239,8 @@ ggplot(clinical_trial, aes(x = Age, y = Cholesterol)) +
        x = "Age (years)",
        y = "Cholesterol (mg/dL)")
 ```
+
+> **Add Some Color!** Run this chunk. By putting `color = Treatment` inside `aes()`, we told ggplot to map the Treatment variable to the color aesthetic.
 
 ## Mapping Aesthetics to Variables
 
@@ -246,6 +264,8 @@ Similar to PROC UNIVARIATE or PROC SGPLOT HISTOGRAM in SAS:
 ```{r}
 # Basic histogram
 ggplot(clinical_trial, aes(x = Cholesterol)) +
+> **Histograms & Density:** Run these chunks. Histograms show counts in bins, while density plots show a smoothed distribution. Both are great for understanding the shape of your data.
+
   geom_histogram(bins = 20, fill = "skyblue", color = "black") +
   labs(title = "Distribution of Cholesterol",
        x = "Cholesterol (mg/dL)",
@@ -267,6 +287,8 @@ Similar to PROC SGPLOT VBOX in SAS:
 # Boxplot by treatment
 ggplot(clinical_trial, aes(x = Treatment, y = Cholesterol, fill = Treatment)) +
   geom_boxplot() +
+> **Boxplots:** Run these chunks. Boxplots are excellent for comparing distributions across groups. Adding `geom_jitter()` shows the individual data points too!
+
   labs(title = "Cholesterol by Treatment Group",
        x = "Treatment",
        y = "Cholesterol (mg/dL)")
@@ -294,6 +316,8 @@ ggplot(clinical_trial, aes(x = Outcome, fill = Outcome)) +
 
 # Stacked bar chart
 ggplot(clinical_trial, aes(x = Treatment, fill = Outcome)) +
+> **Bar Charts:** Run these chunks. `geom_bar()` is used for counts of categorical variables. Notice how `position = "stack"` or `position = "fill"` changes how the bars are displayed when using `fill`.
+
   geom_bar(position = "stack") +
   labs(title = "Outcomes by Treatment Group",
        x = "Treatment",
@@ -341,6 +365,8 @@ longitudinal_summary <- longitudinal_data %>%
     se_measurement = sd(Measurement) / sqrt(n())
   )
 
+> **Line Plots:** Run this chunk (it includes code to create sample longitudinal data first). Line plots are essential for visualizing trends over time. Notice how we calculated summary stats first before plotting the means and error bars.
+
 # Line plot
 ggplot(longitudinal_summary, aes(x = Visit, y = mean_measurement, 
                                 group = Treatment, color = Treatment)) +
@@ -361,6 +387,8 @@ ggplot(longitudinal_summary, aes(x = Visit, y = mean_measurement,
 ggplot2 provides several built-in themes to change the overall appearance of a plot:
 
 ```{r}
+> **Themes:** Run these chunks (after running the initial plot `p`). Themes are a quick way to change the overall look of your plot.
+
 # Default theme
 p <- ggplot(clinical_trial, aes(x = Treatment, y = Cholesterol, fill = Treatment)) +
   geom_boxplot() +
@@ -373,6 +401,8 @@ p + theme_minimal()
 p + theme_classic()
 p + theme_bw()
 ```
+> **Custom Colors:** Run this chunk. `scale_fill_manual()` gives you precise control over the colors used.
+
 
 ## Customizing Colors
 
@@ -387,6 +417,8 @@ ggplot(clinical_trial, aes(x = Treatment, fill = Treatment)) +
 ```
 
 ## Faceting
+
+> **Faceting:** Run this chunk. `facet_wrap()` creates subplots for each level of the specified variable (Sex, in this case). It's great for comparing patterns across groups.
 
 Faceting allows you to create multiple plots based on a categorical variable:
 
@@ -411,6 +443,8 @@ proc sgplot data=clinical_trial;
   vbox Cholesterol / category=Treatment group=Sex;
   title "Cholesterol by Treatment and Sex";
   xaxis label="Treatment Group";
+> **Plot Comparison:** Run this ggplot chunk. Compare its structure to the SAS code above it. Both create boxplots grouped by Treatment and Sex, but the syntax is quite different.
+
   yaxis label="Cholesterol (mg/dL)";
 run;
 ```
@@ -444,6 +478,8 @@ treatment_summary <- clinical_trial %>%
     sd_chol = sd(Cholesterol, na.rm = TRUE),
     mean_age = mean(Age),
     sd_age = sd(Age)
+> **Interpret:** Run these summary chunks again. Looking at the numbers and the plots together helps build a story about the data.
+
   )
 
 treatment_summary
@@ -468,7 +504,7 @@ These observations would guide further formal statistical testing, which we'll c
 
 ## Exercise 1: Summary Statistics
 
-Using the `clinical_trial` dataset, calculate:
+Using the `clinical_trial` dataset, calculate the following. **Type your code in the chunk below and run it.**
 1. The overall mean and median of Cholesterol
 2. The mean Cholesterol by Treatment group
 3. A frequency table of Outcome by Treatment
@@ -483,7 +519,7 @@ Interpret these results in a short text: do the groups differ noticeably in Chol
 
 ## Exercise 2: Creating Visualizations
 
-1. Create a histogram of a numeric variable (e.g., BMI) using ggplot2. Customize the bins if necessary and add a title.
+1. Create a histogram of a numeric variable (e.g., BMI) using ggplot2. Customize the bins if necessary and add a title. **Type your code in the chunk below and run it.**
 2. Create a boxplot of that variable by a categorical grouping (e.g., BMI by Treatment).
 3. Ensure your plots have proper axis labels and interpret what the plots show.
 
@@ -495,7 +531,7 @@ Interpret these results in a short text: do the groups differ noticeably in Chol
 
 ## Exercise 3: Longitudinal Data Visualization
 
-Using the `longitudinal_data` dataset, create a line plot showing the mean Measurement over time for each Treatment group. Add error bars representing the standard error of the mean.
+Using the `longitudinal_data` dataset, create a line plot showing the mean Measurement over time for each Treatment group. Add error bars representing the standard error of the mean. **Type your code in the chunk below and run it.**
 
 ```{r}
 # Your code here

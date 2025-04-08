@@ -51,11 +51,6 @@ When you open RStudio, you'll see a window divided into multiple panes. Let's ex
    - Help: Access R documentation
    - Viewer: View HTML output
 
-```{r, echo=FALSE, fig.cap="RStudio Interface", out.width="100%"}
-# This chunk would typically include an image of the RStudio interface
-# Since we can't include an image directly in this example, we'll leave a placeholder
-```
-
 > **SAS vs. R:** In SAS, you typically have separate windows for code, log, and output. In RStudio, these functions are integrated into a single interface with multiple panes. Also, SAS automatically logs all operations, while in R, messages and errors appear in the Console as you run code.
 
 # Part 2: Installing and Using R Packages
@@ -68,6 +63,10 @@ In R, packages are collections of functions, data, and documentation that extend
 
 If you haven't already installed the essential packages mentioned in the README.md file, let's do that now:
 
+> **Heads Up!** This next code chunk has `eval=FALSE` in its header (the part between `{r ...}`). This means the code won't run automatically if you try to run the whole chunk or knit the document. We do this because you only need to *install* packages once. 
+> 
+> To install these packages, you can place your cursor on each `install.packages(...)` line below and press `Ctrl+Enter` (or `Cmd+Enter` on Mac). This runs them one at a time.
+
 ```{r install-packages, eval=FALSE}
 # Install the tidyverse and haven packages
 install.packages("tidyverse")
@@ -79,6 +78,8 @@ install.packages("haven")
 ## Loading Packages
 
 To use a package in your current R session, you need to load it using the `library()` function:
+
+> In R Markdown (note the .Rmd file extension above), you can also run entire code blocks by clicking the small green 'play' button.
 
 ```{r load-packages, message=FALSE}
 # Load the tidyverse and haven packages
@@ -103,8 +104,11 @@ R Markdown is a file format that allows you to combine R code, results, and narr
 
 You'll see a template R Markdown document with some example code. Let's modify it:
 
-```{r, eval=FALSE}
-# This is just an example of what you would see in the template
+```{r simple-example}
+# Your new R Markdown file starts with a template.
+# Let's try running a simple calculation!
+# Place your cursor in this chunk and press Ctrl+Shift+Enter (Cmd+Shift+Enter on Mac)
+1 + 1
 ```
 
 ## Basic R Markdown Structure
@@ -159,15 +163,15 @@ RStudio will create a new directory with an .Rproj file and open a new RStudio s
 
 Let's summarize some key differences between SAS and R environments:
 
-| Feature | SAS | R with RStudio |
-|---------|-----|----------------|
-| Software Type | Proprietary, commercial | Open-source, free |
-| Interface | Separate windows for code, log, output | Integrated IDE with multiple panes |
-| Functionality | Most features built-in | Core functionality extended through packages |
-| Data Storage | Data stored in datasets within libraries | Data stored as objects in memory |
-| Logging | Automatic log of all operations | Messages appear in Console as code runs |
-| Workflow | Often batch processing with separate output | Interactive, with immediate results |
-| Documentation | Help through F1 or PROC DOCUMENT | Help panel, ?function, or vignettes |
+Feature         SAS                                         R with RStudio
+--------------- ---------------------------------------     -------------------------------------------------
+Software Type   Proprietary, commercial                     Open-source, free
+Interface       Separate windows for code, log, output      Integrated IDE with multiple panes
+Functionality   Most features built-in                      Core functionality extended through packages
+Data Storage    Data stored in datasets within libraries    Data stored as objects in memory
+Logging         Automatic log of all operations             Messages appear in Console as code runs
+Workflow        Often batch processing with separate output Interactive, with immediate results
+Documentation   Help through F1 or PROC DOCUMENT            Help panel, ?function, or vignettes
 
 # Exercises
 
@@ -188,7 +192,7 @@ Complete the following exercises to practice what you've learned:
    - Add a code chunk that displays the result of `2 + 2`
    - Add another code chunk that shows all installed packages using `installed.packages()[,1]`
    - Save the document as "MyFirstRMarkdown.Rmd"
-   - Click the "Knit" button to create an HTML output
+   - Practice running the code chunks you added using the green 'play' button or keyboard shortcuts (like Ctrl+Enter). See the output appear directly below the chunk!
 
 4. **Project Setup**:
    - Create a new RStudio Project called "SAS_to_R_Learning"
